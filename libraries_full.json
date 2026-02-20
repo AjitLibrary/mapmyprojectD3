@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Connemara Public Library",
+    "state": "Tamil Nadu",
+    "district": "Chennai",
+    "year": 1896,
+    "lat": 13.0722,
+    "lon": 80.2642,
+    "persons": ["Lord Connemara"],
+    "connections": ["Anna Centenary Library"]
+  },
+  {
+    "name": "Anna Centenary Library",
+    "state": "Tamil Nadu",
+    "district": "Chennai",
+    "year": 2010,
+    "lat": 13.0067,
+    "lon": 80.2206,
+    "persons": ["M. Karunanidhi"],
+    "connections": ["Connemara Public Library"]
+  },
+  {
+    "name": "National Library of India",
+    "state": "West Bengal",
+    "district": "Kolkata",
+    "year": 1836,
+    "lat": 22.5448,
+    "lon": 88.3426,
+    "persons": ["Lord Metcalfe"],
+    "connections": []
+  }
+]
