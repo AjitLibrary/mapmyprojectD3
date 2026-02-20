@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Digital Library Atlas of India</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+  <style>
+    body { margin:0; font-family: Arial; display:flex; background:#f5f7fa; }
+
+    #sidebar {
+      width:300px;
+      padding:15px;
+      background:#fff;
+      box-shadow:2px 0 10px rgba(0,0,0,0.05);
+    }
+
+    #map { flex:1; height:100vh; }
+
+    input, button {
+      width:100%;
+      margin-bottom:10px;
+      padding:6px;
+    }
+
+    #network {
+      position:absolute;
+      top:80px;
+      right:20px;
+      width:300px;
+      height:300px;
+      background:white;
+      display:none;
+      z-index:1000;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="sidebar">
+  <h2>Library Atlas</h2>
+
+  <input type="text" id="searchBox" placeholder="Search library...">
+
+  <button onclick="toggleHeatmap()">🔥 Heatmap</button>
+  <button onclick="toggleNetwork()">🔗 Network</button>
+  <button onclick="playTimeline()">▶ Timeline</button>
+
+  <input type="range" id="yearRange" min="1800" max="2025" value="2025">
+  <p>Year: <span id="yearValue">2025</span></p>
+
+  <p>Total: <span id="count">0</span></p>
+
+  <hr>
+  <p><span style="color:red">●</span> Historic</p>
+  <p><span style="color:blue">●</span> Modern</p>
+</div>
+
+<div id="map"></div>
+<div id="network"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+<script>
+var map = L.map('map').setView([22.5,80],5);
+
+L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png').addTo(map);
+
+var cluster = L.markerClusterGroup();
+map.addLayer(cluster);
+
+var data=[];
+var heatLayer;
+var heatOn=false;
+var networkOn=false;
+var stateLayer;
+
+// LOAD LIBRARY DATA
+fetch('libraries_full.json')
+.then(res=>res.json())
+.then(d=>{
+  data=d;
+  updateMap();
+});
+
+// LOAD STATE GEOJSON
+fetch('india_states.geojson')
+.then(res=>res.json())
+.then(geo=>{
+  stateLayer = L.geoJSON(geo,{
+    style:styleState,
+    onEachFeature:onEachState
+  }).addTo(map);
+});
+
+// COLOR FUNCTION
+function getColor(count){
+  return count > 2 ? '#08519c' :
+         count > 1 ? '#3182bd' :
+         count > 0 ? '#6baed6' :
+                     '#f0f0f0';
+}
+
+// STYLE
+function styleState(feature){
+  var count = data.filter(d=>d.state===feature.properties.st_nm).length;
+
+  return {
+    fillColor:getColor(count),
+    weight:1,
+    color:"#555",
+    fillOpacity:0.6
+  };
+}
+
+// STATE CLICK
+function onEachState(feature,layer){
+  var stateName = feature.properties.st_nm;
+
+  layer.bindTooltip(stateName);
+
+  layer.on('click',function(){
+    var count = data.filter(d=>d.state===stateName).length;
+
+    layer.bindPopup(`
+      <b>${stateName}</b><br>
+      Libraries: ${count}
+    `).openPopup();
+  });
+}
+
+// MARKERS
+function showMarkers(filtered){
+
+  cluster.clearLayers();
+
+  var year = yearRange.value;
+
+  var final = filtered.filter(d=>d.year <= year);
+
+  final.forEach(lib=>{
+
+    var marker = L.marker([lib.lat, lib.lon],{
+      icon: lib.year < 1900
+        ? L.icon({
+          iconUrl:'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+          iconSize:[25,25]
+        })
+        : undefined
+    });
+
+    marker.bindPopup(`
+      <b>${lib.name}</b><br>
+      📍 ${lib.district}, ${lib.state}<br>
+      📅 ${lib.year}<br>
+      👤 ${lib.persons ? lib.persons.join(", ") : "N/A"}<br>
+      ${lib.year < 1900 ? "⭐ Historic Library" : ""}
+    `);
+
+    cluster.addLayer(marker);
+  });
+
+  count.innerText = final.length;
+}
+
+// UPDATE MAP
+function updateMap(){
+  showMarkers(data);
+
+  if(stateLayer){
+    stateLayer.eachLayer(function(layer){
+      layer.setStyle(styleState(layer.feature));
+    });
+  }
+
+  if(heatOn){
+    toggleHeatmap();
+    toggleHeatmap();
+  }
+}
+
+// SEARCH
+searchBox.addEventListener("input",function(){
+  var val=this.value.toLowerCase();
+  var filtered=data.filter(d=>d.name.toLowerCase().includes(val));
+  showMarkers(filtered);
+});
+
+// TIMELINE
+yearRange.oninput=function(){
+  yearValue.innerText=this.value;
+  updateMap();
+};
+
+// PLAY
+function playTimeline(){
+  let year=1800;
+
+  let timer=setInterval(()=>{
+    year+=5;
+    if(year>2025) clearInterval(timer);
+
+    yearRange.value=year;
+    yearValue.innerText=year;
+    updateMap();
+  },800);
+}
+
+// HEATMAP
+function toggleHeatmap(){
+
+  heatOn=!heatOn;
+
+  if(heatLayer){
+    map.removeLayer(heatLayer);
+  }
+
+  if(heatOn){
+    let year = yearRange.value;
+    let filtered = data.filter(d=>d.year<=year);
+
+    let points = filtered.map(d=>[d.lat,d.lon,0.5]);
+
+    heatLayer=L.heatLayer(points,{radius:25}).addTo(map);
+  }
+}
+
+// NETWORK
+function toggleNetwork(){
+  networkOn=!networkOn;
+
+  let div=document.getElementById("network");
+
+  if(networkOn){
+    div.style.display="block";
+    drawNetwork();
+  } else {
+    div.style.display="none";
+  }
+}
+
+// D3 NETWORK
+function drawNetwork(){
+
+  d3.select("#network").html("");
+
+  var year = yearRange.value;
+  var filtered = data.filter(d=>d.year<=year);
+
+  var svg=d3.select("#network")
+    .append("svg")
+    .attr("width",300)
+    .attr("height",300);
+
+  var nodes=filtered.map(d=>({id:d.name}));
+
+  var links=[];
+  filtered.forEach(d=>{
+    if(d.connections){
+      d.connections.forEach(c=>{
+        links.push({source:d.name,target:c});
+      });
+    }
+  });
+
+  var sim=d3.forceSimulation(nodes)
+    .force("link",d3.forceLink(links).id(d=>d.id).distance(50))
+    .force("charge",d3.forceManyBody().strength(-50))
+    .force("center",d3.forceCenter(150,150));
+
+  var link=svg.append("g")
+    .selectAll("line")
+    .data(links)
+    .enter().append("line")
+    .style("stroke","#999");
+
+  var node=svg.append("g")
+    .selectAll("circle")
+    .data(nodes)
+    .enter().append("circle")
+    .attr("r",5)
+    .style("fill","#0077b6");
+
+  sim.on("tick",()=>{
+    link
+      .attr("x1",d=>d.source.x)
+      .attr("y1",d=>d.source.y)
+      .attr("x2",d=>d.target.x)
+      .attr("y2",d=>d.target.y);
+
+    node
+      .attr("cx",d=>d.x)
+      .attr("cy",d=>d.y);
+  });
+}
+</script>
+
+</body>
+</html>
