@@ -11,61 +11,83 @@
 
   <style>
     :root { --primary: #2c3e50; --accent: #e67e22; --bg: #f4f7f6; }
+    
     body { margin:0; display:flex; font-family: 'Segoe UI', sans-serif; height: 100vh; background: var(--bg); overflow: hidden; }
     
+    /* Responsive Sidebar */
     #sidebar { 
       width:320px; padding:20px; background:white; 
-      overflow-y:auto; border-right: 1px solid #ddd; z-index: 1001;
+      overflow-y:auto; border-right: 1px solid #ddd; z-index: 2000;
       box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+      transition: transform 0.3s ease;
     }
-    #map { flex:1; background: #aad3df; }
+    
+    #map { flex:1; height: 100vh; z-index: 1; }
 
-    .control-group { margin-bottom: 20px; }
-    label { font-size: 0.85rem; font-weight: bold; color: #666; text-transform: uppercase; }
+    /* Mobile Menu Toggle */
+    #menuToggle {
+      display: none; position: absolute; top: 15px; left: 15px;
+      z-index: 2100; background: var(--primary); color: white;
+      border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;
+    }
+
+    /* Control Groups */
+    .control-group { margin-bottom: 15px; }
+    label { font-size: 0.8rem; font-weight: bold; color: #666; text-transform: uppercase; }
     input, select, button { 
-      width: 100%; padding: 10px; margin-top: 5px; 
-      border-radius: 6px; border: 1px solid #dfe6e9; box-sizing: border-box;
+      width: 100%; padding: 12px; margin-top: 5px; 
+      border-radius: 6px; border: 1px solid #dfe6e9; box-sizing: border-box; font-size: 16px; /* Prevents iOS zoom */
     }
-    button { 
-      background: var(--primary); color: white; cursor: pointer; border: none;
-      font-weight: 600; transition: all 0.2s;
-    }
-    button:hover { background: #34495e; transform: translateY(-1px); }
+    button { background: var(--primary); color: white; border: none; font-weight: 600; }
     
     #network {
-      position:absolute; top:20px; right:20px; width:320px; height:320px;
+      position:absolute; top:70px; right:20px; width:280px; height:280px;
       background:rgba(255,255,255,0.95); border-radius: 12px; 
       box-shadow: 0 10px 25px rgba(0,0,0,0.1); display:none; z-index:1000;
-      border: 1px solid #eee;
     }
     
-    .stats-panel { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; }
-    canvas { max-width: 100%; margin-top: 20px; }
+    .stats-panel { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 10px; border: 1px solid #eee; }
+    canvas { max-width: 100%; margin-top: 15px; }
 
+    /* Floating Timeline */
     .slider-container {
-      position:absolute; bottom:30px; left:350px; right: 30px;
-      background: white; padding: 15px 25px; border-radius: 50px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 999;
-      display: flex; align-items: center; gap: 20px;
+      position:absolute; bottom:20px; left:20px; right: 20px;
+      background: white; padding: 10px 20px; border-radius: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1500;
+      display: flex; align-items: center; gap: 15px;
     }
     #yearRange { flex-grow: 1; accent-color: var(--accent); }
-    
-    .popup-img { width: 100%; height: 120px; object-fit: cover; border-radius: 4px; margin-top: 8px; }
-    .leaflet-tooltip { font-weight: bold; border-radius: 4px; border: none !important; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    #playBtn { width: 70px; padding: 8px; }
+
+    /* MEDIA QUERIES FOR MOBILE */
+    @media (max-width: 768px) {
+      #sidebar {
+        position: absolute; left: 0; top: 0; bottom: 0;
+        transform: translateX(-100%); /* Hidden by default */
+      }
+      #sidebar.active { transform: translateX(0); }
+      #menuToggle { display: block; }
+      .slider-container { bottom: 10px; left: 10px; right: 10px; font-size: 0.8rem; }
+      .slider-container strong { display: none; } /* Hide text on very small screens */
+    }
   </style>
 </head>
 <body>
 
+<button id="menuToggle" onclick="toggleSidebar()">☰ Menu</button>
+
 <div id="sidebar">
-  <h2 style="margin-top:0; color: var(--primary);">📚 Library Atlas</h2>
+  <h2 style="margin-top:0; color: var(--primary); display: flex; justify-content: space-between;">
+    📚 Atlas <button onclick="toggleSidebar()" style="width: auto; background: none; color: #ccc; border: none; font-size: 20px; cursor: pointer;">✕</button>
+  </h2>
   
   <div class="control-group">
-    <label>Search Libraries</label>
-    <input id="searchBox" placeholder="Search by name...">
+    <label>Search</label>
+    <input id="searchBox" placeholder="Library name...">
   </div>
 
   <div class="control-group">
-    <label>Filter by Type</label>
+    <label>Type</label>
     <select id="categoryFilter">
       <option value="all">All Institutions</option>
       <option value="University">University</option>
@@ -75,14 +97,14 @@
   </div>
 
   <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-    <button onclick="toggleHeatmap()" style="background:#d63031">🔥 Heatmap</button>
-    <button onclick="toggleNetwork()" style="background:#0984e3">🔗 Network</button>
+    <button onclick="toggleHeatmap()" style="background:#d63031">🔥 Heat</button>
+    <button onclick="toggleNetwork()" style="background:#0984e3">🔗 Net</button>
   </div>
   
-  <button style="margin-top:10px; background:#636e72;" onclick="resetView()">🇮🇳 Reset Map</button>
+  <button style="margin-top:10px; background:#636e72;" onclick="resetView()">🇮🇳 Reset</button>
 
   <div class="stats-panel">
-    <strong>Total Found:</strong> <span id="count" style="color:var(--accent); font-size:1.2rem;">0</span>
+    <strong>Total:</strong> <span id="count" style="color:var(--accent);">0</span>
   </div>
 
   <canvas id="yearChart"></canvas>
@@ -93,9 +115,9 @@
 <div id="network"></div>
 
 <div class="slider-container">
-  <strong style="white-space:nowrap;">Year: <span id="yearValue" style="color:var(--accent)">2025</span></strong>
+  <strong>Year: <span id="yearValue" style="color:var(--accent)">2025</span></strong>
   <input type="range" id="yearRange" min="1500" max="2025" value="2025">
-  <button id="playBtn" style="width: 80px;" onclick="toggleTimeline()">▶ Play</button>
+  <button id="playBtn" onclick="toggleTimeline()">▶</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -105,22 +127,32 @@
 <script src="https://d3js.org/d3.v7.min.js"></script>
 
 <script>
-// --- GLOBALS ---
+// --- GLOBALS & MOBILE HELPERS ---
 let data = [], filteredData = [];
 let map, clusters, heatLayer, geoLayer, districtLayer;
-let yearChart, stateChart;
-let timer = null;
+let yearChart, stateChart, timer = null;
 let networkOn = false, heatOn = false;
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('active');
+}
 
 // --- INITIALIZATION ---
 function initMap() {
-  map = L.map('map', { doubleClickZoom: false, zoomSnap: 0.1 }).setView([22.5, 80], 4.5);
+  map = L.map('map', { 
+    doubleClickZoom: false, 
+    zoomSnap: 0.1,
+    zoomControl: false // Move zoom control to top-right to avoid Menu button
+  }).setView([22.5, 80], 4.5);
+  
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
   clusters = L.markerClusterGroup({ spiderfyOnMaxZoom: true, showCoverageOnHover: false });
   map.addLayer(clusters);
 }
 
-// --- DATA LOADING ---
+// --- DATA & LOGIC (Including Highlight Fixes) ---
 fetch('libraries_full.json').then(r => r.json()).then(d => {
   data = d;
   updateDisplay();
@@ -132,13 +164,7 @@ function updateDisplay() {
   const year = parseInt(document.getElementById('yearRange').value);
   const cat = document.getElementById('categoryFilter').value;
   const search = document.getElementById('searchBox').value.toLowerCase();
-
-  filteredData = data.filter(d => 
-    d.year <= year && 
-    (cat === 'all' || d.category === cat) &&
-    (d.name.toLowerCase().includes(search))
-  );
-
+  filteredData = data.filter(d => d.year <= year && (cat === 'all' || d.category === cat) && (d.name.toLowerCase().includes(search)));
   renderMarkers(filteredData);
   document.getElementById('count').innerText = filteredData.length;
 }
@@ -147,9 +173,7 @@ function renderMarkers(arr) {
   clusters.clearLayers();
   arr.forEach(lib => {
     const imgHtml = lib.image ? `<img src="${lib.image}" class="popup-img">` : '';
-    const marker = L.marker([lib.lat, lib.lon])
-      .bindPopup(`${imgHtml}<br><strong>${lib.name}</strong><br>District: ${lib.district}<br>Est: ${lib.year}`);
-    clusters.addLayer(marker);
+    clusters.addLayer(L.marker([lib.lat, lib.lon]).bindPopup(`${imgHtml}<br><strong>${lib.name}</strong><br>${lib.district}`));
   });
 }
 
@@ -157,35 +181,20 @@ function getCount(name, level) {
   return data.filter(d => d[level]?.toLowerCase().trim() === name.toLowerCase().trim()).length;
 }
 
-// --- DRILL-DOWN LOGIC WITH GUARANTEED CLEAR ---
 function loadIndiaGeo() {
   if (geoLayer) map.removeLayer(geoLayer);
-  if (districtLayer) map.removeLayer(districtLayer);
-
   fetch('india_states.geojson').then(r => r.json()).then(json => {
     geoLayer = L.geoJSON(json, {
       style: { color: '#2c3e50', weight: 1.5, fillOpacity: 0.1, fillColor: '#2c3e50' },
       onEachFeature: function(f, l) {
         const stateName = f.properties.ST_NM || f.properties.NAME_1 || f.properties.name;
-        const count = getCount(stateName, 'state');
-        l.bindTooltip(`<b>${stateName}</b><br>Libraries: ${count}`, { sticky: true });
-
-        l.on('mouseover', function(e) {
-          // FORCED RESET: Clear all other states before highlighting this one
-          geoLayer.eachLayer(layer => geoLayer.resetStyle(layer));
-          
-          this.setStyle({ fillOpacity: 0.3, color: '#e67e22', weight: 3 });
-          this.bringToFront();
-        });
-
-        l.on('mouseout', function(e) {
-          geoLayer.resetStyle(this);
-        });
-
-        l.on('click', function(e) {
-          geoLayer.eachLayer(layer => geoLayer.resetStyle(layer)); // Clear highlights
-          map.fitBounds(this.getBounds());
+        l.bindTooltip(`<b>${stateName}</b>: ${getCount(stateName, 'state')}`, { sticky: true });
+        l.on('mouseover', function() { geoLayer.eachLayer(lyr => geoLayer.resetStyle(lyr)); this.setStyle({ fillOpacity: 0.3, color: '#e67e22', weight: 3 }); });
+        l.on('mouseout', function() { geoLayer.resetStyle(this); });
+        l.on('click', function() { 
+          map.fitBounds(this.getBounds()); 
           loadDistricts(stateName);
+          if(window.innerWidth < 768) toggleSidebar(); // Close sidebar on mobile after selection
         });
       }
     }).addTo(map);
@@ -194,39 +203,20 @@ function loadIndiaGeo() {
 
 function loadDistricts(stateName) {
   if (districtLayer) map.removeLayer(districtLayer);
-  
-  // Freeze state layer as a static background
   geoLayer.setStyle({ fillOpacity: 0.05, weight: 1, color: '#bdc3c7' });
-
   const fileName = stateName.replace(/\s/g, '') + ".geojson";
   fetch(fileName).then(r => r.json()).then(json => {
     districtLayer = L.geoJSON(json, {
       style: { color: '#e67e22', weight: 1.2, fillOpacity: 0.1, fillColor: '#f39c12' },
       onEachFeature: function(f, l) {
         const distName = f.properties.NAME_2 || f.properties.district || f.properties.name;
-        const dCount = getCount(distName, 'district');
-        l.bindTooltip(`<b>${distName}</b><br>Libraries: ${dCount}`, { sticky: true });
-
-        l.on('mouseover', function(e) {
-          // FORCED RESET: Clear all other districts before highlighting this one
-          districtLayer.eachLayer(layer => districtLayer.resetStyle(layer));
-          
-          this.setStyle({ fillOpacity: 0.4, weight: 2.5, color: '#d35400' });
-          this.bringToFront();
-        });
-
-        l.on('mouseout', function(e) {
-          districtLayer.resetStyle(this);
-        });
-
-        l.on('click', function(e) {
-          L.DomEvent.stopPropagation(e);
-          filterByLoc(distName, 'district');
-        });
+        l.bindTooltip(`<b>${distName}</b>: ${getCount(distName, 'district')}`, { sticky: true });
+        l.on('mouseover', function() { districtLayer.eachLayer(lyr => districtLayer.resetStyle(lyr)); this.setStyle({ fillOpacity: 0.4, weight: 2.5, color: '#d35400' }); });
+        l.on('mouseout', function() { districtLayer.resetStyle(this); });
+        l.on('click', function(e) { L.DomEvent.stopPropagation(e); filterByLoc(distName, 'district'); });
       }
     }).addTo(map);
-  }).catch(() => console.warn("GeoJSON not found for: " + stateName));
-  
+  });
   filterByLoc(stateName, 'state');
 }
 
@@ -238,15 +228,11 @@ function filterByLoc(name, level) {
 
 function resetView() {
   if (districtLayer) map.removeLayer(districtLayer);
-  if (geoLayer) {
-    geoLayer.eachLayer(layer => geoLayer.resetStyle(layer));
-    geoLayer.setStyle({ color: '#2c3e50', weight: 1.5, fillOpacity: 0.1, fillColor: '#2c3e50' });
-  }
+  if (geoLayer) geoLayer.eachLayer(lyr => geoLayer.resetStyle(lyr));
   map.setView([22.5, 80], 4.5);
   updateDisplay();
 }
 
-// --- VISUALIZATIONS ---
 function drawCharts() {
   const years = {};
   data.forEach(d => years[d.year] = (years[d.year] || 0) + 1);
@@ -270,19 +256,15 @@ function drawCharts() {
 }
 
 const yrRange = document.getElementById('yearRange');
-yrRange.oninput = () => {
-  document.getElementById('yearValue').innerText = yrRange.value;
-  updateDisplay();
-};
+yrRange.oninput = () => { document.getElementById('yearValue').innerText = yrRange.value; updateDisplay(); };
 
 function toggleTimeline() {
   const btn = document.getElementById('playBtn');
-  if (timer) {
-    clearInterval(timer); timer = null; btn.innerText = "▶ Play";
-  } else {
-    btn.innerText = "⏸ Pause";
+  if (timer) { clearInterval(timer); timer = null; btn.innerText = "▶"; }
+  else {
+    btn.innerText = "⏸";
     timer = setInterval(() => {
-      if (yrRange.value >= 2025) { clearInterval(timer); timer = null; btn.innerText = "▶ Play"; return; }
+      if (yrRange.value >= 2025) { clearInterval(timer); timer = null; btn.innerText = "▶"; return; }
       yrRange.value = parseInt(yrRange.value) + 1; yrRange.oninput();
     }, 150);
   }
@@ -302,7 +284,7 @@ function toggleNetwork() {
 
 function drawNetwork() {
   d3.select("#network").html("");
-  const w = 320, h = 320;
+  const w = 280, h = 280;
   const svg = d3.select("#network").append("svg").attr("width", w).attr("height", h);
   const nodes = data.map(d => ({ id: d.id, name: d.name }));
   const links = [];
