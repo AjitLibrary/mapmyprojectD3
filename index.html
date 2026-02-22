@@ -10,13 +10,17 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
 
   <style>
-    :root { --primary: #2c3e50; --accent: #e67e22; --bg: #f4f7f6; }
+    :root { 
+      --primary: #2c3e50; 
+      --accent: #e67e22; 
+      --bg: #f4f7f6; 
+      --sidebar-width: 320px;
+    }
     
     body { margin:0; display:flex; font-family: 'Segoe UI', sans-serif; height: 100vh; background: var(--bg); overflow: hidden; }
     
-    /* Responsive Sidebar */
     #sidebar { 
-      width:320px; padding:20px; background:white; 
+      width: var(--sidebar-width); padding:20px; background:white; 
       overflow-y:auto; border-right: 1px solid #ddd; z-index: 2000;
       box-shadow: 2px 0 10px rgba(0,0,0,0.05);
       transition: transform 0.3s ease;
@@ -24,21 +28,19 @@
     
     #map { flex:1; height: 100vh; z-index: 1; }
 
-    /* Mobile Menu Toggle */
     #menuToggle {
       display: none; position: absolute; top: 15px; left: 15px;
       z-index: 2100; background: var(--primary); color: white;
       border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;
     }
 
-    /* Control Groups */
     .control-group { margin-bottom: 15px; }
     label { font-size: 0.8rem; font-weight: bold; color: #666; text-transform: uppercase; }
     input, select, button { 
       width: 100%; padding: 12px; margin-top: 5px; 
-      border-radius: 6px; border: 1px solid #dfe6e9; box-sizing: border-box; font-size: 16px; /* Prevents iOS zoom */
+      border-radius: 6px; border: 1px solid #dfe6e9; box-sizing: border-box; font-size: 16px; 
     }
-    button { background: var(--primary); color: white; border: none; font-weight: 600; }
+    button { background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer; }
     
     #network {
       position:absolute; top:70px; right:20px; width:280px; height:280px;
@@ -49,26 +51,33 @@
     .stats-panel { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 10px; border: 1px solid #eee; }
     canvas { max-width: 100%; margin-top: 15px; }
 
-    /* Floating Timeline */
+    /* FIXED TIMELINE POSITIONING */
     .slider-container {
-      position:absolute; bottom:20px; left:20px; right: 20px;
-      background: white; padding: 10px 20px; border-radius: 30px;
+      position:absolute; bottom:25px; 
+      left: calc(var(--sidebar-width) + 25px); 
+      right: 25px;
+      background: white; padding: 10px 25px; border-radius: 50px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1500;
       display: flex; align-items: center; gap: 15px;
+      transition: left 0.3s ease;
     }
-    #yearRange { flex-grow: 1; accent-color: var(--accent); }
-    #playBtn { width: 70px; padding: 8px; }
+    #yearRange { flex-grow: 1; accent-color: var(--accent); cursor: pointer; }
+    #playBtn { width: auto; padding: 8px 15px; }
+    .popup-img { width: 100%; height: 120px; object-fit: cover; border-radius: 4px; margin-top: 8px; }
 
-    /* MEDIA QUERIES FOR MOBILE */
+    /* MOBILE RESPONSIVENESS */
     @media (max-width: 768px) {
       #sidebar {
         position: absolute; left: 0; top: 0; bottom: 0;
-        transform: translateX(-100%); /* Hidden by default */
+        transform: translateX(-100%);
       }
       #sidebar.active { transform: translateX(0); }
       #menuToggle { display: block; }
-      .slider-container { bottom: 10px; left: 10px; right: 10px; font-size: 0.8rem; }
-      .slider-container strong { display: none; } /* Hide text on very small screens */
+      .slider-container { 
+        left: 15px; right: 15px; bottom: 15px;
+        padding: 10px 15px;
+      }
+      .slider-container strong { display: none; }
     }
   </style>
 </head>
@@ -77,17 +86,17 @@
 <button id="menuToggle" onclick="toggleSidebar()">☰ Menu</button>
 
 <div id="sidebar">
-  <h2 style="margin-top:0; color: var(--primary); display: flex; justify-content: space-between;">
-    📚 Atlas <button onclick="toggleSidebar()" style="width: auto; background: none; color: #ccc; border: none; font-size: 20px; cursor: pointer;">✕</button>
+  <h2 style="margin-top:0; color: var(--primary); display: flex; justify-content: space-between; align-items: center;">
+    📚 Atlas <span onclick="toggleSidebar()" style="color: #ccc; font-size: 24px; cursor: pointer; display: none;" class="close-icon">✕</span>
   </h2>
   
   <div class="control-group">
-    <label>Search</label>
+    <label>Search Libraries</label>
     <input id="searchBox" placeholder="Library name...">
   </div>
 
   <div class="control-group">
-    <label>Type</label>
+    <label>Institution Type</label>
     <select id="categoryFilter">
       <option value="all">All Institutions</option>
       <option value="University">University</option>
@@ -97,14 +106,15 @@
   </div>
 
   <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-    <button onclick="toggleHeatmap()" style="background:#d63031">🔥 Heat</button>
-    <button onclick="toggleNetwork()" style="background:#0984e3">🔗 Net</button>
+    <button onclick="toggleHeatmap()" style="background:#d63031">🔥 Heatmap</button>
+    <button onclick="toggleNetwork()" style="background:#0984e3">🔗 Network</button>
   </div>
   
-  <button style="margin-top:10px; background:#636e72;" onclick="resetView()">🇮🇳 Reset</button>
+  <button style="margin-top:10px; background:#27ae60;" onclick="locateUser()">📍 Near Me</button>
+  <button style="margin-top:10px; background:#636e72;" onclick="resetView()">🇮🇳 Reset Map</button>
 
   <div class="stats-panel">
-    <strong>Total:</strong> <span id="count" style="color:var(--accent);">0</span>
+    <strong>Total Records:</strong> <span id="count" style="color:var(--accent); font-size:1.2rem;">0</span>
   </div>
 
   <canvas id="yearChart"></canvas>
@@ -115,9 +125,9 @@
 <div id="network"></div>
 
 <div class="slider-container">
-  <strong>Year: <span id="yearValue" style="color:var(--accent)">2025</span></strong>
+  <strong style="white-space:nowrap;">Year: <span id="yearValue" style="color:var(--accent)">2025</span></strong>
   <input type="range" id="yearRange" min="1500" max="2025" value="2025">
-  <button id="playBtn" onclick="toggleTimeline()">▶</button>
+  <button id="playBtn" onclick="toggleTimeline()">▶ Play</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -127,7 +137,7 @@
 <script src="https://d3js.org/d3.v7.min.js"></script>
 
 <script>
-// --- GLOBALS & MOBILE HELPERS ---
+// --- GLOBALS ---
 let data = [], filteredData = [];
 let map, clusters, heatLayer, geoLayer, districtLayer;
 let yearChart, stateChart, timer = null;
@@ -142,17 +152,17 @@ function initMap() {
   map = L.map('map', { 
     doubleClickZoom: false, 
     zoomSnap: 0.1,
-    zoomControl: false // Move zoom control to top-right to avoid Menu button
+    zoomControl: false 
   }).setView([22.5, 80], 4.5);
   
   L.control.zoom({ position: 'topright' }).addTo(map);
-
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+  
   clusters = L.markerClusterGroup({ spiderfyOnMaxZoom: true, showCoverageOnHover: false });
   map.addLayer(clusters);
 }
 
-// --- DATA & LOGIC (Including Highlight Fixes) ---
+// --- DATA LOGIC ---
 fetch('libraries_full.json').then(r => r.json()).then(d => {
   data = d;
   updateDisplay();
@@ -164,7 +174,13 @@ function updateDisplay() {
   const year = parseInt(document.getElementById('yearRange').value);
   const cat = document.getElementById('categoryFilter').value;
   const search = document.getElementById('searchBox').value.toLowerCase();
-  filteredData = data.filter(d => d.year <= year && (cat === 'all' || d.category === cat) && (d.name.toLowerCase().includes(search)));
+  
+  filteredData = data.filter(d => 
+    d.year <= year && 
+    (cat === 'all' || d.category === cat) && 
+    (d.name.toLowerCase().includes(search))
+  );
+  
   renderMarkers(filteredData);
   document.getElementById('count').innerText = filteredData.length;
 }
@@ -173,7 +189,9 @@ function renderMarkers(arr) {
   clusters.clearLayers();
   arr.forEach(lib => {
     const imgHtml = lib.image ? `<img src="${lib.image}" class="popup-img">` : '';
-    clusters.addLayer(L.marker([lib.lat, lib.lon]).bindPopup(`${imgHtml}<br><strong>${lib.name}</strong><br>${lib.district}`));
+    clusters.addLayer(L.marker([lib.lat, lib.lon]).bindPopup(
+      `${imgHtml}<br><strong>${lib.name}</strong><br>District: ${lib.district}<br>Year: ${lib.year}`
+    ));
   });
 }
 
@@ -181,6 +199,7 @@ function getCount(name, level) {
   return data.filter(d => d[level]?.toLowerCase().trim() === name.toLowerCase().trim()).length;
 }
 
+// --- GEOSPATIAL LOGIC (FIXED HIGHLIGHTS) ---
 function loadIndiaGeo() {
   if (geoLayer) map.removeLayer(geoLayer);
   fetch('india_states.geojson').then(r => r.json()).then(json => {
@@ -189,12 +208,21 @@ function loadIndiaGeo() {
       onEachFeature: function(f, l) {
         const stateName = f.properties.ST_NM || f.properties.NAME_1 || f.properties.name;
         l.bindTooltip(`<b>${stateName}</b>: ${getCount(stateName, 'state')}`, { sticky: true });
-        l.on('mouseover', function() { geoLayer.eachLayer(lyr => geoLayer.resetStyle(lyr)); this.setStyle({ fillOpacity: 0.3, color: '#e67e22', weight: 3 }); });
+        
+        l.on('mouseover', function() { 
+          // Forced Reset for India layer
+          geoLayer.eachLayer(lyr => geoLayer.resetStyle(lyr)); 
+          this.setStyle({ fillOpacity: 0.3, color: '#e67e22', weight: 3 }); 
+          this.bringToFront();
+        });
+        
         l.on('mouseout', function() { geoLayer.resetStyle(this); });
+        
         l.on('click', function() { 
+          geoLayer.eachLayer(lyr => geoLayer.resetStyle(lyr));
           map.fitBounds(this.getBounds()); 
           loadDistricts(stateName);
-          if(window.innerWidth < 768) toggleSidebar(); // Close sidebar on mobile after selection
+          if(window.innerWidth < 768) toggleSidebar(); 
         });
       }
     }).addTo(map);
@@ -204,6 +232,7 @@ function loadIndiaGeo() {
 function loadDistricts(stateName) {
   if (districtLayer) map.removeLayer(districtLayer);
   geoLayer.setStyle({ fillOpacity: 0.05, weight: 1, color: '#bdc3c7' });
+  
   const fileName = stateName.replace(/\s/g, '') + ".geojson";
   fetch(fileName).then(r => r.json()).then(json => {
     districtLayer = L.geoJSON(json, {
@@ -211,9 +240,20 @@ function loadDistricts(stateName) {
       onEachFeature: function(f, l) {
         const distName = f.properties.NAME_2 || f.properties.district || f.properties.name;
         l.bindTooltip(`<b>${distName}</b>: ${getCount(distName, 'district')}`, { sticky: true });
-        l.on('mouseover', function() { districtLayer.eachLayer(lyr => districtLayer.resetStyle(lyr)); this.setStyle({ fillOpacity: 0.4, weight: 2.5, color: '#d35400' }); });
+        
+        l.on('mouseover', function() { 
+          // Forced Reset for District layer
+          districtLayer.eachLayer(lyr => districtLayer.resetStyle(lyr));
+          this.setStyle({ fillOpacity: 0.4, weight: 2.5, color: '#d35400' }); 
+          this.bringToFront();
+        });
+        
         l.on('mouseout', function() { districtLayer.resetStyle(this); });
-        l.on('click', function(e) { L.DomEvent.stopPropagation(e); filterByLoc(distName, 'district'); });
+        
+        l.on('click', function(e) { 
+          L.DomEvent.stopPropagation(e); 
+          filterByLoc(distName, 'district'); 
+        });
       }
     }).addTo(map);
   });
@@ -233,6 +273,14 @@ function resetView() {
   updateDisplay();
 }
 
+function locateUser() {
+  map.locate({setView: true, maxZoom: 12});
+  map.on('locationfound', function(e) {
+    L.circle(e.latlng, e.accuracy).addTo(map).bindPopup("You are here").openPopup();
+  });
+}
+
+// --- VISUALIZATIONS ---
 function drawCharts() {
   const years = {};
   data.forEach(d => years[d.year] = (years[d.year] || 0) + 1);
@@ -260,11 +308,11 @@ yrRange.oninput = () => { document.getElementById('yearValue').innerText = yrRan
 
 function toggleTimeline() {
   const btn = document.getElementById('playBtn');
-  if (timer) { clearInterval(timer); timer = null; btn.innerText = "▶"; }
+  if (timer) { clearInterval(timer); timer = null; btn.innerText = "▶ Play"; }
   else {
-    btn.innerText = "⏸";
+    btn.innerText = "⏸ Pause";
     timer = setInterval(() => {
-      if (yrRange.value >= 2025) { clearInterval(timer); timer = null; btn.innerText = "▶"; return; }
+      if (yrRange.value >= 2025) { clearInterval(timer); timer = null; btn.innerText = "▶ Play"; return; }
       yrRange.value = parseInt(yrRange.value) + 1; yrRange.oninput();
     }, 150);
   }
