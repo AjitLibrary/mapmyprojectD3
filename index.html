@@ -14,7 +14,7 @@
       --primary: #2c3e50; 
       --accent: #e67e22; 
       --bg: #f4f7f6; 
-      --sidebar-width: 320px;
+      --sidebar-width: 360px;
     }
     
     body { margin:0; display:flex; font-family: 'Segoe UI', sans-serif; height: 100vh; background: var(--bg); overflow: hidden; }
@@ -23,35 +23,28 @@
       width: var(--sidebar-width); padding:20px; background:white; 
       overflow-y:auto; border-right: 1px solid #ddd; z-index: 2000;
       box-shadow: 2px 0 10px rgba(0,0,0,0.05);
-      transition: transform 0.3s ease;
+      padding-bottom: 50px;
     }
     
-    #map { flex:1; height: 100vh; z-index: 1; }
+    #map { flex:1; height: 100vh; z-index: 1; cursor: crosshair; }
 
-    #menuToggle {
-      display: none; position: absolute; top: 15px; left: 15px;
-      z-index: 2100; background: var(--primary); color: white;
-      border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;
+    #breadcrumbs {
+      position: absolute; top: 15px; left: calc(var(--sidebar-width) + 20px);
+      z-index: 1000; background: white; padding: 8px 15px; border-radius: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-weight: bold;
     }
+    #breadcrumbs span { cursor: pointer; color: var(--accent); }
 
     .control-group { margin-bottom: 15px; }
     label { font-size: 0.8rem; font-weight: bold; color: #666; text-transform: uppercase; }
     input, select, button { 
-      width: 100%; padding: 12px; margin-top: 5px; 
-      border-radius: 6px; border: 1px solid #dfe6e9; box-sizing: border-box; font-size: 16px; 
+      width: 100%; padding: 10px; margin-top: 5px; 
+      border-radius: 6px; border: 1px solid #dfe6e9; box-sizing: border-box; 
     }
-    button { background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer; }
+    button { background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    button:hover { opacity: 0.9; }
+    button.active { background: var(--accent) !important; }
     
-    #network {
-      position:absolute; top:70px; right:20px; width:280px; height:280px;
-      background:rgba(255,255,255,0.95); border-radius: 12px; 
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1); display:none; z-index:1000;
-    }
-    
-    .stats-panel { background: #f8f9fa; padding: 12px; border-radius: 8px; margin-top: 10px; border: 1px solid #eee; }
-    canvas { max-width: 100%; margin-top: 15px; }
-
-    /* FIXED TIMELINE POSITIONING */
     .slider-container {
       position:absolute; bottom:25px; 
       left: calc(var(--sidebar-width) + 25px); 
@@ -59,170 +52,222 @@
       background: white; padding: 10px 25px; border-radius: 50px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1500;
       display: flex; align-items: center; gap: 15px;
-      transition: left 0.3s ease;
     }
-    #yearRange { flex-grow: 1; accent-color: var(--accent); cursor: pointer; }
-    #playBtn { width: auto; padding: 8px 15px; }
+    #yearRange { flex-grow: 1; accent-color: var(--accent); }
+    
+    .chart-box { position: relative; height: 220px; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 10px;}
     .popup-img { width: 100%; height: 120px; object-fit: cover; border-radius: 4px; margin-top: 8px; }
 
-    /* MOBILE RESPONSIVENESS */
     @media (max-width: 768px) {
-      #sidebar {
-        position: absolute; left: 0; top: 0; bottom: 0;
-        transform: translateX(-100%);
-      }
+      #sidebar { position: absolute; left: 0; transform: translateX(-100%); transition: 0.3s;}
       #sidebar.active { transform: translateX(0); }
       #menuToggle { display: block; }
-      .slider-container { 
-        left: 15px; right: 15px; bottom: 15px;
-        padding: 10px 15px;
-      }
-      .slider-container strong { display: none; }
+      .slider-container { left: 15px; right: 15px; }
+      #breadcrumbs { left: 80px; }
     }
   </style>
 </head>
 <body>
 
-<button id="menuToggle" onclick="toggleSidebar()">☰ Menu</button>
+<button id="menuToggle" style="display:none; position:absolute; z-index:3000; top:15px; left:15px; background:var(--primary); color:white; border:none; padding:10px; border-radius:5px;" onclick="document.getElementById('sidebar').classList.toggle('active')">☰ Menu</button>
+
+<div id="breadcrumbs">
+  <span onclick="resetView()">India</span><span id="bc-state"></span>
+</div>
 
 <div id="sidebar">
-  <h2 style="margin-top:0; color: var(--primary); display: flex; justify-content: space-between; align-items: center;">
-    Indian Library Project<span onclick="toggleSidebar()" style="color: #ccc; font-size: 24px; cursor: pointer; display: none;" class="close-icon">✕</span>
-  </h2>
+  <h2 style="margin-top:0; color: var(--primary);">Indian Library Project</h2>
   
   <div class="control-group">
-    <label>Search Libraries</label>
+    <label>Search Directory</label>
     <input id="searchBox" placeholder="Library name...">
   </div>
 
   <div class="control-group">
-    <label>Institution Type</label>
-    <select id="categoryFilter">
-      <option value="all">All Institutions</option>
-      <option value="University">University</option>
+    <label>Filter by Category</label>
+    <select id="typeFilter">
+      <option value="all">All Categories</option>
       <option value="Public">Public</option>
+      <option value="University">University</option>
       <option value="Private">Private</option>
     </select>
   </div>
 
-  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-    <button onclick="toggleHeatmap()" style="background:#d63031">🔥 Heatmap</button>
-    <button onclick="toggleNetwork()" style="background:#0984e3">🔗 Network</button>
-  </div>
-  
-  <button style="margin-top:10px; background:#27ae60;" onclick="locateUser()">📍 Near Me</button>
-  <button style="margin-top:10px; background:#636e72;" onclick="resetView()">🇮🇳 Reset Map</button>
-
-  <div class="stats-panel">
-    <strong>Total Records:</strong> <span id="count" style="color:var(--accent); font-size:1.2rem;">0</span>
+  <div class="control-group">
+    <label>Buffer Radius (km)</label>
+    <input type="number" id="bufferRadius" value="10" min="1" max="100">
+    <button id="bufferBtn" onclick="toggleBufferMode()">📍 Custom Radius Analysis</button>
   </div>
 
-  <canvas id="yearChart"></canvas>
-  <canvas id="stateChart"></canvas>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="control-group">
+    <button id="compareBtn" onclick="toggleCompareMode()">⚖️ Compare States</button>
+    <button id="desertBtn" onclick="toggleDesertMode()" style="background:#e74c3c;">🌵 Desert Mode</button>
+  </div>
+
+  <div class="control-group">
+    <button id="netBtn" onclick="toggleNetworkMap()">🕸️ Network Map</button>
+  </div>
+
+  <button style="margin-top:10px; background:#636e72;" onclick="resetView()">🇮🇳 Reset All</button>
+
+  <div class="stats-panel" style="margin-top:15px; padding:10px; background:#f8f9fa; border-radius:5px; border-left: 4px solid var(--accent);">
+    <strong>Current Records:</strong> <span id="count" style="color:var(--accent); font-size:1.1rem;">0</span>
+  </div>
+
+  <div class="chart-box"><canvas id="yearChart"></canvas></div>
+  <div class="chart-box"><canvas id="pieChart"></canvas></div>
+  <div class="chart-box"><canvas id="compareChart"></canvas></div>
 </div>
 
 <div id="map"></div>
-<div id="network"></div>
 
 <div class="slider-container">
-  <strong style="white-space:nowrap;">Year: <span id="yearValue" style="color:var(--accent)">2025</span></strong>
-  <input type="range" id="yearRange" min="1500" max="2025" value="2025">
-  <button id="playBtn" onclick="toggleTimeline()">▶ Play</button>
+  <strong style="white-space:nowrap;">Timeline: <span id="yearValue">2025</span></strong>
+  <input type="range" id="yearRange" min="1700" max="2025" value="2025">
+  <button id="playBtn" onclick="toggleTimeline()" style="width: auto; padding: 8px 15px;">▶ Play</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://d3js.org/d3.v7.min.js"></script>
 
 <script>
 // --- GLOBALS ---
 let data = [], filteredData = [];
-let map, clusters, heatLayer, geoLayer, districtLayer;
-let yearChart, stateChart, timer = null;
-let networkOn = false, heatOn = false;
-
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('active');
-}
+let map, clusters, geoLayer, districtLayer, bufferCircle, networkLayer;
+let yearChart, pieChart, compareChart;
+let timer = null, compareMode = false, bufferMode = false, desertMode = false, networkOn = false;
+let selectedStates = [];
 
 // --- INITIALIZATION ---
 function initMap() {
-  map = L.map('map', { 
-    doubleClickZoom: false, 
-    zoomSnap: 0.1,
-    zoomControl: false 
-  }).setView([22.5, 80], 4.5);
-  
+  map = L.map('map', { zoomControl: false }).setView([22.5, 80], 4.5);
   L.control.zoom({ position: 'topright' }).addTo(map);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
   
   clusters = L.markerClusterGroup({ spiderfyOnMaxZoom: true, showCoverageOnHover: false });
   map.addLayer(clusters);
+
+  networkLayer = L.layerGroup().addTo(map);
+
+  map.on('click', function(e) {
+    if (bufferMode) runBufferAnalysis(e.latlng);
+  });
 }
 
-// --- DATA LOGIC ---
-fetch('libraries_full.json').then(r => r.json()).then(d => {
-  data = d;
-  updateDisplay();
-  drawCharts();
-  loadIndiaGeo();
-});
+// --- DATA FETCH ---
+fetch('libraries_full.json')
+  .then(r => r.json())
+  .then(d => {
+    data = d;
+    initMap();
+    initCharts();
+    loadIndiaGeo();
+    updateDisplay();
+  })
+  .catch(err => console.error("Could not load libraries_full.json", err));
 
+// --- CORE UPDATES ---
 function updateDisplay() {
   const year = parseInt(document.getElementById('yearRange').value);
-  const cat = document.getElementById('categoryFilter').value;
   const search = document.getElementById('searchBox').value.toLowerCase();
+  const type = document.getElementById('typeFilter').value; 
   
-  filteredData = data.filter(d => 
-    d.year <= year && 
-    (cat === 'all' || d.category === cat) && 
-    (d.name.toLowerCase().includes(search))
-  );
+  filteredData = data.filter(d => {
+    const matchesYear = d.year <= year;
+    const matchesSearch = d.name.toLowerCase().includes(search);
+    const matchesType = type === 'all' || d.category === type; 
+    return matchesYear && matchesSearch && matchesType;
+  });
   
   renderMarkers(filteredData);
   document.getElementById('count').innerText = filteredData.length;
+  updateCharts(filteredData);
+  
+  if (geoLayer) geoLayer.eachLayer(l => geoLayer.resetStyle(l));
+  if (networkOn) drawNetwork(filteredData);
+  else networkLayer.clearLayers();
 }
 
 function renderMarkers(arr) {
   clusters.clearLayers();
   arr.forEach(lib => {
     const imgHtml = lib.image ? `<img src="${lib.image}" class="popup-img">` : '';
-    clusters.addLayer(L.marker([lib.lat, lib.lon]).bindPopup(
-      `${imgHtml}<br><strong>${lib.name}</strong><br>District: ${lib.district}<br>Year: ${lib.year}`
-    ));
+    const marker = L.marker([lib.lat, lib.lon])
+      .bindPopup(`<b>${lib.name}</b><br>Type: ${lib.category}<br>Built: ${lib.year}${imgHtml}`);
+    clusters.addLayer(marker);
   });
 }
 
 function getCount(name, level) {
-  return data.filter(d => d[level]?.toLowerCase().trim() === name.toLowerCase().trim()).length;
+  const currentYear = parseInt(document.getElementById('yearRange').value);
+  return data.filter(d => d[level]?.toLowerCase().trim() === name.toLowerCase().trim() && d.year <= currentYear).length;
 }
 
-// --- GEOSPATIAL LOGIC (FIXED HIGHLIGHTS) ---
+// --- NETWORK MAP ---
+function toggleNetworkMap() {
+  networkOn = !networkOn;
+  document.getElementById('netBtn').classList.toggle('active');
+  updateDisplay();
+}
+
+function drawNetwork(arr) {
+  networkLayer.clearLayers();
+  const currentYear = parseInt(document.getElementById('yearRange').value);
+  
+  arr.forEach(source => {
+    if (source.connections) {
+      source.connections.forEach(targetId => {
+        const target = data.find(d => String(d.id) === String(targetId));
+        if (target && target.year <= currentYear) {
+          L.polyline([[source.lat, source.lon], [target.lat, target.lon]], {
+            color: '#8e44ad', weight: 2, dashArray: '5, 10', opacity: 0.6
+          }).addTo(networkLayer);
+        }
+      });
+    }
+  });
+}
+
+// --- GEO LOGIC ---
+function getChoroColor(count) {
+  if (desertMode) return count === 0 ? '#e74c3c' : '#ecf0f1';
+  return count > 15 ? '#006d2c' : count > 8 ? '#31a354' : count > 3 ? '#74c476' : count > 0 ? '#bae4b3' : '#f7f7f7';
+}
+
+function styleFeature(feature) {
+  const name = feature.properties.ST_NM || feature.properties.NAME_1 || feature.properties.name;
+  const count = getCount(name, 'state');
+  const isSelected = selectedStates.includes(name);
+
+  return { 
+    fillColor: getChoroColor(count), 
+    weight: isSelected ? 4 : 1, 
+    opacity: 1, 
+    color: isSelected ? '#e67e22' : '#fff', 
+    fillOpacity: isSelected ? 0.9 : 0.7 
+  };
+}
+
 function loadIndiaGeo() {
-  if (geoLayer) map.removeLayer(geoLayer);
   fetch('india_states.geojson').then(r => r.json()).then(json => {
     geoLayer = L.geoJSON(json, {
-      style: { color: '#2c3e50', weight: 1.5, fillOpacity: 0.1, fillColor: '#2c3e50' },
+      style: styleFeature,
       onEachFeature: function(f, l) {
-        const stateName = f.properties.ST_NM || f.properties.NAME_1 || f.properties.name;
-        l.bindTooltip(`<b>${stateName}</b>: ${getCount(stateName, 'state')}`, { sticky: true });
-        
-        l.on('mouseover', function() { 
-          // Forced Reset for India layer
-          geoLayer.eachLayer(lyr => geoLayer.resetStyle(lyr)); 
-          this.setStyle({ fillOpacity: 0.3, color: '#e67e22', weight: 3 }); 
-          this.bringToFront();
-        });
-        
+        const name = f.properties.ST_NM || f.properties.NAME_1 || f.properties.name;
+        l.bindTooltip(`${name}: ${getCount(name, 'state')}`, { sticky: true });
+
+        l.on('mouseover', function() { this.setStyle({ fillOpacity: 0.4 }); });
         l.on('mouseout', function() { geoLayer.resetStyle(this); });
-        
-        l.on('click', function() { 
-          geoLayer.eachLayer(lyr => geoLayer.resetStyle(lyr));
-          map.fitBounds(this.getBounds()); 
-          loadDistricts(stateName);
-          if(window.innerWidth < 768) toggleSidebar(); 
+
+        l.on('click', function(e) {
+          if (compareMode) {
+            handleCompareSelection(name);
+          } else if (!bufferMode) {
+            map.fitBounds(this.getBounds());
+            document.getElementById('bc-state').innerText = ` > ${name}`;
+            loadDistricts(name);
+          }
         });
       }
     }).addTo(map);
@@ -231,33 +276,121 @@ function loadIndiaGeo() {
 
 function loadDistricts(stateName) {
   if (districtLayer) map.removeLayer(districtLayer);
-  geoLayer.setStyle({ fillOpacity: 0.05, weight: 1, color: '#bdc3c7' });
-  
   const fileName = stateName.replace(/\s/g, '') + ".geojson";
   fetch(fileName).then(r => r.json()).then(json => {
     districtLayer = L.geoJSON(json, {
-      style: { color: '#e67e22', weight: 1.2, fillOpacity: 0.1, fillColor: '#f39c12' },
+      style: (f) => {
+        const dName = f.properties.NAME_2 || f.properties.district || f.properties.name;
+        return { fillColor: getChoroColor(getCount(dName, 'district')), weight: 1, fillOpacity: 0.3, color: '#e67e22' };
+      },
       onEachFeature: function(f, l) {
-        const distName = f.properties.NAME_2 || f.properties.district || f.properties.name;
-        l.bindTooltip(`<b>${distName}</b>: ${getCount(distName, 'district')}`, { sticky: true });
-        
-        l.on('mouseover', function() { 
-          // Forced Reset for District layer
-          districtLayer.eachLayer(lyr => districtLayer.resetStyle(lyr));
-          this.setStyle({ fillOpacity: 0.4, weight: 2.5, color: '#d35400' }); 
-          this.bringToFront();
-        });
-        
-        l.on('mouseout', function() { districtLayer.resetStyle(this); });
-        
-        l.on('click', function(e) { 
-          L.DomEvent.stopPropagation(e); 
-          filterByLoc(distName, 'district'); 
-        });
+        const dName = f.properties.NAME_2 || f.properties.district || f.properties.name;
+        l.bindTooltip(dName);
+        l.on('click', (e) => { L.DomEvent.stopPropagation(e); filterByLoc(dName, 'district'); });
       }
     }).addTo(map);
+  }).catch(() => console.warn("District GeoJSON missing"));
+}
+
+// --- MODES ---
+function toggleCompareMode() {
+  compareMode = !compareMode;
+  selectedStates = [];
+  document.getElementById('compareBtn').classList.toggle('active');
+  geoLayer.eachLayer(l => geoLayer.resetStyle(l));
+  updateCompareChart();
+}
+
+function handleCompareSelection(name) {
+  if (selectedStates.includes(name)) {
+    selectedStates = selectedStates.filter(s => s !== name);
+  } else {
+    selectedStates.push(name);
+    if (selectedStates.length > 2) selectedStates.shift();
+  }
+  geoLayer.eachLayer(l => geoLayer.resetStyle(l));
+  updateCompareChart();
+}
+
+function toggleBufferMode() {
+  bufferMode = !bufferMode;
+  document.getElementById('bufferBtn').classList.toggle('active');
+  if (!bufferMode && bufferCircle) map.removeLayer(bufferCircle);
+}
+
+function runBufferAnalysis(latlng) {
+  const radiusKm = document.getElementById('bufferRadius').value;
+  if (bufferCircle) map.removeLayer(bufferCircle);
+  bufferCircle = L.circle(latlng, { radius: radiusKm * 1000, color: '#e67e22' }).addTo(map);
+  const count = filteredData.filter(lib => map.distance(latlng, [lib.lat, lib.lon]) <= radiusKm * 1000).length;
+  alert(`${count} libraries within ${radiusKm}km radius.`);
+}
+
+function toggleDesertMode() {
+  desertMode = !desertMode;
+  document.getElementById('desertBtn').classList.toggle('active');
+  updateDisplay();
+}
+
+// --- CHARTS ---
+function initCharts() {
+  yearChart = new Chart(document.getElementById('yearChart'), {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Growth', data: [], borderColor: '#e67e22', fill: true }] },
+    options: { maintainAspectRatio: false }
   });
-  filterByLoc(stateName, 'state');
+  pieChart = new Chart(document.getElementById('pieChart'), {
+    type: 'pie',
+    data: { labels: ['Public', 'University', 'Private'], datasets: [{ data: [0,0,0], backgroundColor: ['#3498db', '#9b59b6', '#f1c40f'] }] },
+    options: { maintainAspectRatio: false }
+  });
+  compareChart = new Chart(document.getElementById('compareChart'), {
+    type: 'bar',
+    data: { labels: ['Libraries'], datasets: [] },
+    options: { maintainAspectRatio: false }
+  });
+}
+
+function updateCharts(arr) {
+  const cats = { Public: 0, University: 0, Private: 0 };
+  const years = {};
+  arr.forEach(d => {
+    cats[d.category]++;
+    years[d.year] = (years[d.year] || 0) + 1;
+  });
+  pieChart.data.datasets[0].data = [cats.Public, cats.University, cats.Private];
+  pieChart.update();
+
+  const sortedYears = Object.keys(years).sort((a,b) => a-b);
+  yearChart.data.labels = sortedYears;
+  yearChart.data.datasets[0].data = sortedYears.map(y => years[y]);
+  yearChart.update();
+}
+
+function updateCompareChart() {
+  compareChart.data.datasets = selectedStates.map((state, i) => ({
+    label: state,
+    backgroundColor: i === 0 ? '#3498db' : '#e74c3c',
+    data: [data.filter(d => d.state === state).length]
+  }));
+  compareChart.update();
+}
+
+// --- TIMELINE ---
+function toggleTimeline() {
+  const btn = document.getElementById('playBtn');
+  if (timer) {
+    clearInterval(timer); timer = null; btn.innerText = "▶ Play";
+  } else {
+    btn.innerText = "⏸ Pause";
+    timer = setInterval(() => {
+      const yr = document.getElementById('yearRange');
+      if (parseInt(yr.value) >= 2025) { toggleTimeline(); return; }
+      yr.value = parseInt(yr.value) + 1;
+      document.getElementById('yearValue').innerText = yr.value;
+      updateDisplay();
+    }, 150);
+  }
 }
 
 function filterByLoc(name, level) {
@@ -266,89 +399,15 @@ function filterByLoc(name, level) {
   document.getElementById('count').innerText = locData.length;
 }
 
-function resetView() {
-  if (districtLayer) map.removeLayer(districtLayer);
-  if (geoLayer) geoLayer.eachLayer(lyr => geoLayer.resetStyle(lyr));
-  map.setView([22.5, 80], 4.5);
+function resetView() { location.reload(); }
+
+document.getElementById('yearRange').oninput = function() {
+  document.getElementById('yearValue').innerText = this.value;
   updateDisplay();
-}
+};
+document.getElementById('searchBox').oninput = updateDisplay;
+document.getElementById('typeFilter').onchange = updateDisplay;
 
-function locateUser() {
-  map.locate({setView: true, maxZoom: 12});
-  map.on('locationfound', function(e) {
-    L.circle(e.latlng, e.accuracy).addTo(map).bindPopup("You are here").openPopup();
-  });
-}
-
-// --- VISUALIZATIONS ---
-function drawCharts() {
-  const years = {};
-  data.forEach(d => years[d.year] = (years[d.year] || 0) + 1);
-  const sortedYears = Object.keys(years).sort((a,b) => a-b);
-  if(yearChart) yearChart.destroy();
-  yearChart = new Chart(document.getElementById('yearChart'), {
-    type: 'line',
-    data: { labels: sortedYears, datasets: [{ label: 'Growth', data: sortedYears.map(y => years[y]), borderColor: '#e67e22', tension: 0.3 }] },
-    options: { plugins: { legend: { display: false } } }
-  });
-
-  const states = {};
-  data.forEach(d => states[d.state] = (states[d.state] || 0) + 1);
-  const topStates = Object.entries(states).sort((a,b) => b[1]-a[1]).slice(0,5);
-  if(stateChart) stateChart.destroy();
-  stateChart = new Chart(document.getElementById('stateChart'), {
-    type: 'bar',
-    data: { labels: topStates.map(s => s[0]), datasets: [{ label: 'Count', data: topStates.map(s => s[1]), backgroundColor: '#2c3e50' }] },
-    options: { plugins: { legend: { display: false } } }
-  });
-}
-
-const yrRange = document.getElementById('yearRange');
-yrRange.oninput = () => { document.getElementById('yearValue').innerText = yrRange.value; updateDisplay(); };
-
-function toggleTimeline() {
-  const btn = document.getElementById('playBtn');
-  if (timer) { clearInterval(timer); timer = null; btn.innerText = "▶ Play"; }
-  else {
-    btn.innerText = "⏸ Pause";
-    timer = setInterval(() => {
-      if (yrRange.value >= 2025) { clearInterval(timer); timer = null; btn.innerText = "▶ Play"; return; }
-      yrRange.value = parseInt(yrRange.value) + 1; yrRange.oninput();
-    }, 150);
-  }
-}
-
-function toggleHeatmap() {
-  heatOn = !heatOn;
-  if (heatLayer) map.removeLayer(heatLayer);
-  if (heatOn) heatLayer = L.heatLayer(filteredData.map(d => [d.lat, d.lon, 0.5]), { radius: 20, blur: 15 }).addTo(map);
-}
-
-function toggleNetwork() {
-  networkOn = !networkOn;
-  document.getElementById("network").style.display = networkOn ? "block" : "none";
-  if (networkOn) drawNetwork();
-}
-
-function drawNetwork() {
-  d3.select("#network").html("");
-  const w = 280, h = 280;
-  const svg = d3.select("#network").append("svg").attr("width", w).attr("height", h);
-  const nodes = data.map(d => ({ id: d.id, name: d.name }));
-  const links = [];
-  data.forEach(d => { if (d.connections) d.connections.forEach(t => links.push({ source: d.id, target: t })); });
-  const sim = d3.forceSimulation(nodes).force("link", d3.forceLink(links).id(d => d.id).distance(40)).force("charge", d3.forceManyBody().strength(-80)).force("center", d3.forceCenter(w/2, h/2));
-  const link = svg.selectAll("line").data(links).enter().append("line").attr("stroke", "#ccc");
-  const node = svg.selectAll("circle").data(nodes).enter().append("circle").attr("r", 5).attr("fill", "#e67e22");
-  sim.on("tick", () => {
-    link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-    node.attr("cx", d => d.x).attr("cy", d => d.y);
-  });
-}
-
-initMap();
-document.getElementById('searchBox').addEventListener('input', updateDisplay);
-document.getElementById('categoryFilter').addEventListener('change', updateDisplay);
 </script>
 </body>
 </html>
