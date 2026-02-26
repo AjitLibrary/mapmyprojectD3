@@ -2,150 +2,728 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Indian Library Project</title>
+  <title>Granthagar — Indian Library Atlas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
-
   <style>
-    :root { 
-      --primary: #2c3e50; 
-      --accent: #e67e22; 
-      --bg: #f4f7f6; 
-      --sidebar-width: 360px;
+    :root {
+      --primary: #1a1a2e;
+      --secondary: #16213e;
+      --accent: #c9a84c;
+      --accent2: #e8c97e;
+      --danger: #e74c3c;
+      --success: #27ae60;
+      --surface: #0f3460;
+      --text: #f0ece2;
+      --text-muted: #a89f8c;
+      --sidebar-width: 380px;
+      --card-bg: rgba(255,255,255,0.04);
+      --border: rgba(201,168,76,0.2);
     }
-    
-    body { margin:0; display:flex; font-family: 'Segoe UI', sans-serif; height: 100vh; background: var(--bg); overflow: hidden; }
-    
-    #sidebar { 
-      width: var(--sidebar-width); padding:20px; background:white; 
-      overflow-y:auto; border-right: 1px solid #ddd; z-index: 2000;
-      box-shadow: 2px 0 10px rgba(0,0,0,0.05);
-      padding-bottom: 50px;
-    }
-    
-    #map { flex:1; height: 100vh; z-index: 1; cursor: crosshair; }
 
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      font-family: 'DM Sans', sans-serif;
+      height: 100vh;
+      background: var(--primary);
+      overflow: hidden;
+      color: var(--text);
+    }
+
+    /* ── SIDEBAR ── */
+    #sidebar {
+      width: var(--sidebar-width);
+      background: var(--secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 2000;
+      box-shadow: 4px 0 30px rgba(0,0,0,0.4);
+    }
+
+    .sidebar-header {
+      padding: 22px 24px 16px;
+      background: linear-gradient(135deg, var(--primary), var(--surface));
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+      line-height: 1;
+    }
+
+    .sidebar-header p {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .sidebar-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) transparent;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+    .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 2px; }
+
+    /* Stats Row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card:hover { border-color: var(--accent); }
+
+    .stat-card .val {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: 'Playfair Display', serif;
+      line-height: 1;
+    }
+
+    .stat-card .lbl {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 3px;
+    }
+
+    /* Controls */
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus { border-color: var(--accent); }
+
+    select option { background: var(--secondary); color: var(--text); }
+
+    .search-wrap { position: relative; }
+    .search-wrap input { padding-left: 32px; }
+    .search-wrap::before {
+      content: '🔍';
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.75rem;
+    }
+
+    /* Buttons */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .btn {
+      padding: 9px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.active { background: var(--accent); color: var(--primary); border-color: var(--accent); font-weight: 700; }
+    .btn.danger { border-color: var(--danger); }
+    .btn.danger:hover { background: var(--danger); border-color: var(--danger); }
+    .btn.danger.active { background: var(--danger); border-color: var(--danger); }
+    .btn.full { grid-column: 1 / -1; }
+
+    /* Charts */
+    .chart-wrap {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .chart-title {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .chart-wrap canvas { max-height: 160px; }
+
+    /* Export */
+    #exportBtn {
+      width: 100%;
+      padding: 10px;
+      margin-top: 4px;
+      background: linear-gradient(135deg, #1a6b3c, #27ae60);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    #exportBtn:hover { opacity: 0.88; }
+
+    /* ── MAP ── */
+    #map {
+      flex: 1;
+      height: 100vh;
+      z-index: 1;
+    }
+
+    /* ── BREADCRUMBS ── */
     #breadcrumbs {
-      position: absolute; top: 15px; left: calc(var(--sidebar-width) + 20px);
-      z-index: 1000; background: white; padding: 8px 15px; border-radius: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1); font-weight: bold;
+      position: absolute;
+      top: 16px;
+      left: calc(var(--sidebar-width) + 16px);
+      z-index: 1000;
+      background: rgba(22,33,62,0.92);
+      backdrop-filter: blur(8px);
+      padding: 8px 16px;
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      pointer-events: none;
     }
-    #breadcrumbs span { cursor: pointer; color: var(--accent); }
 
-    .control-group { margin-bottom: 15px; }
-    label { font-size: 0.8rem; font-weight: bold; color: #666; text-transform: uppercase; }
-    input, select, button { 
-      width: 100%; padding: 10px; margin-top: 5px; 
-      border-radius: 6px; border: 1px solid #dfe6e9; box-sizing: border-box; 
+    #breadcrumbs span.crumb {
+      color: var(--accent);
+      cursor: pointer;
+      pointer-events: all;
     }
-    button { background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
-    button:hover { opacity: 0.9; }
-    button.active { background: var(--accent) !important; }
-    
-    .slider-container {
-      position:absolute; bottom:25px; 
-      left: calc(var(--sidebar-width) + 25px); 
-      right: 25px;
-      background: white; padding: 10px 25px; border-radius: 50px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1500;
-      display: flex; align-items: center; gap: 15px;
-    }
-    #yearRange { flex-grow: 1; accent-color: var(--accent); }
-    
-    .chart-box { position: relative; height: 220px; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 10px;}
-    .popup-img { width: 100%; height: 120px; object-fit: cover; border-radius: 4px; margin-top: 8px; }
 
+    #breadcrumbs span.crumb:hover { text-decoration: underline; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 80px;
+      right: 24px;
+      z-index: 9999;
+      background: rgba(22,33,62,0.95);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 0.82rem;
+      color: var(--text);
+      max-width: 300px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast .toast-title { font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+
+    /* ── TIMELINE ── */
+    .timeline-bar {
+      position: absolute;
+      bottom: 20px;
+      left: calc(var(--sidebar-width) + 20px);
+      right: 20px;
+      background: rgba(22,33,62,0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      padding: 12px 20px;
+      border-radius: 40px;
+      z-index: 1500;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .timeline-year {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 45px;
+      white-space: nowrap;
+    }
+
+    #yearRange {
+      flex-grow: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      outline: none;
+      border: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    #yearRange::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(201,168,76,0.6);
+    }
+
+    .play-btn {
+      padding: 7px 16px;
+      background: var(--accent);
+      border: none;
+      border-radius: 20px;
+      color: var(--primary);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .play-btn:hover { background: var(--accent2); }
+
+    /* ── INFO PANEL ── */
+    #infoPanel {
+      position: absolute;
+      top: 60px;
+      right: 16px;
+      z-index: 1200;
+      background: rgba(22,33,62,0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      width: 260px;
+      display: none;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+
+    #infoPanel.show { display: block; }
+    #infoPanel img { width: 100%; height: 130px; object-fit: cover; border-radius: 6px; margin-bottom: 10px; }
+    #infoPanel h3 { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--accent); margin-bottom: 6px; }
+    #infoPanel .meta { font-size: 0.76rem; color: var(--text-muted); line-height: 1.7; }
+    #infoPanel .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .close-panel {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 1rem;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+    }
+    .close-panel:hover { color: var(--text); }
+
+    /* Leaflet popup override */
+    .leaflet-popup-content-wrapper {
+      background: var(--secondary) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 10px !important;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5) !important;
+      color: var(--text) !important;
+      font-family: 'DM Sans', sans-serif !important;
+    }
+
+    .leaflet-popup-tip { background: var(--secondary) !important; }
+    .leaflet-popup-close-button { color: var(--text-muted) !important; }
+
+    .popup-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .popup-detail {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.8;
+    }
+
+    .popup-img {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+
+    .popup-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.64rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* Cluster override */
+    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+      background: rgba(201,168,76,0.3) !important;
+    }
+
+    .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+      background: rgba(201,168,76,0.7) !important;
+      color: #1a1a2e !important;
+      font-weight: 700 !important;
+    }
+
+    /* Mobile */
     @media (max-width: 768px) {
-      #sidebar { position: absolute; left: 0; transform: translateX(-100%); transition: 0.3s;}
-      #sidebar.active { transform: translateX(0); }
-      #menuToggle { display: block; }
-      .slider-container { left: 15px; right: 15px; }
-      #breadcrumbs { left: 80px; }
+      #sidebar {
+        position: absolute;
+        left: 0;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform 0.3s;
+      }
+      #sidebar.open { transform: translateX(0); }
+      #menuToggle { display: flex !important; }
+      .timeline-bar { left: 15px; right: 15px; }
+      #breadcrumbs { left: 70px; }
     }
+
+    #menuToggle {
+      display: none;
+      position: absolute;
+      z-index: 3000;
+      top: 14px;
+      left: 14px;
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      align-items: center;
+    }
+
+    /* Heatmap toggle hint */
+    .mode-indicator {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mode-pill {
+      background: rgba(22,33,62,0.92);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      display: none;
+      backdrop-filter: blur(8px);
+    }
+
+    .mode-pill.visible { display: block; }
+    .mode-pill span { color: var(--accent); font-weight: 700; }
   </style>
 </head>
 <body>
 
-<button id="menuToggle" style="display:none; position:absolute; z-index:3000; top:15px; left:15px; background:var(--primary); color:white; border:none; padding:10px; border-radius:5px;" onclick="document.getElementById('sidebar').classList.toggle('active')">☰ Menu</button>
+<button id="menuToggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
 
 <div id="breadcrumbs">
-  <span onclick="resetView()">India</span><span id="bc-state"></span>
+  <span class="crumb" onclick="resetView()">🇮🇳 India</span>
+  <span id="bc-state"></span>
+  <span id="bc-district"></span>
+</div>
+
+<div class="mode-indicator">
+  <div class="mode-pill" id="pill-buffer">📍 <span>Buffer Mode</span> — click map</div>
+  <div class="mode-pill" id="pill-compare">⚖️ <span>Compare Mode</span> — click 2 states</div>
+  <div class="mode-pill" id="pill-network">🕸️ <span>Network Map</span> active</div>
+  <div class="mode-pill" id="pill-desert">🌵 <span>Desert Mode</span> — showing gaps</div>
+</div>
+
+<!-- Library detail panel -->
+<div id="infoPanel">
+  <button class="close-panel" onclick="closeInfoPanel()">✕</button>
+  <div id="infoPanelContent"></div>
 </div>
 
 <div id="sidebar">
-  <h2 style="margin-top:0; color: var(--primary);">Indian Library Project</h2>
-  
-  <div class="control-group">
-    <label>Search Directory</label>
-    <input id="searchBox" placeholder="Library name...">
+  <div class="sidebar-header">
+    <h1>Granthagar</h1>
+    <p>Indian Library Atlas · Interactive</p>
   </div>
 
-  <div class="control-group">
-    <label>Filter by Category</label>
+  <div class="sidebar-scroll">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="val" id="count">0</div>
+        <div class="lbl">Libraries</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="stateCount">0</div>
+        <div class="lbl">States</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="oldestYear">—</div>
+        <div class="lbl">Oldest</div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="section-label">Search & Filter</div>
+    <div class="search-wrap">
+      <input type="text" id="searchBox" placeholder="Search library name...">
+    </div>
+
     <select id="typeFilter">
       <option value="all">All Categories</option>
       <option value="Public">Public</option>
       <option value="University">University</option>
       <option value="Private">Private</option>
+      <option value="Research">Research</option>
+      <option value="Museum">Museum</option>
+      <option value="Religious">Religious</option>
     </select>
+
+    <select id="stateFilter">
+      <option value="all">All States</option>
+    </select>
+
+    <!-- Tools -->
+    <div class="section-label">Map Tools</div>
+    <div class="btn-grid">
+      <button class="btn" id="compareBtn" onclick="toggleCompareMode()">⚖️ Compare</button>
+      <button class="btn danger" id="desertBtn" onclick="toggleDesertMode()">🌵 Library Deserts</button>
+      <button class="btn" id="netBtn" onclick="toggleNetworkMap()">🕸️ Network</button>
+      <button class="btn" id="heatBtn" onclick="toggleHeatmap()">🔥 Heatmap</button>
+    </div>
+
+    <!-- Buffer -->
+    <div class="section-label">Proximity Analysis</div>
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+      <input type="number" id="bufferRadius" value="50" min="1" max="500" style="margin-bottom:0; width:80px;">
+      <span style="font-size:0.75rem; color:var(--text-muted);">km radius</span>
+    </div>
+    <button class="btn full" id="bufferBtn" onclick="toggleBufferMode()">📍 Enable Click-Buffer Analysis</button>
+
+    <!-- Timeline -->
+    <div class="section-label">Decade Jump</div>
+    <div style="display:grid; grid-template-columns: repeat(4,1fr); gap:5px; margin-bottom:8px;">
+      <button class="btn" style="font-size:0.7rem;" onclick="jumpYear(1800)">1800</button>
+      <button class="btn" style="font-size:0.7rem;" onclick="jumpYear(1900)">1900</button>
+      <button class="btn" style="font-size:0.7rem;" onclick="jumpYear(1947)">1947</button>
+      <button class="btn" style="font-size:0.7rem;" onclick="jumpYear(2025)">Now</button>
+    </div>
+
+    <!-- Charts -->
+    <div class="section-label">Analytics</div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">📈 Growth Over Time</div>
+      <canvas id="yearChart"></canvas>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">🍩 Category Breakdown</div>
+      <canvas id="pieChart"></canvas>
+    </div>
+
+    <div class="chart-wrap" id="compareChartWrap" style="display:none;">
+      <div class="chart-title">⚖️ State Comparison</div>
+      <canvas id="compareChart"></canvas>
+    </div>
+
+    <!-- Export -->
+    <div class="section-label">Export</div>
+    <button id="exportBtn" onclick="exportCSV()">⬇ Export Filtered Data as CSV</button>
+
+    <button class="btn full" style="margin-top:8px; background:transparent;" onclick="resetView()">↺ Reset All Filters</button>
+
+    <div style="height:20px;"></div>
   </div>
-
-  <div class="control-group">
-    <label>Buffer Radius (km)</label>
-    <input type="number" id="bufferRadius" value="10" min="1" max="100">
-    <button id="bufferBtn" onclick="toggleBufferMode()">📍 Custom Radius Analysis</button>
-  </div>
-
-  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;" class="control-group">
-    <button id="compareBtn" onclick="toggleCompareMode()">⚖️ Compare States</button>
-    <button id="desertBtn" onclick="toggleDesertMode()" style="background:#e74c3c;">🌵 Desert Mode</button>
-  </div>
-
-  <div class="control-group">
-    <button id="netBtn" onclick="toggleNetworkMap()">🕸️ Network Map</button>
-  </div>
-
-  <button style="margin-top:10px; background:#636e72;" onclick="resetView()">🇮🇳 Reset All</button>
-
-  <div class="stats-panel" style="margin-top:15px; padding:10px; background:#f8f9fa; border-radius:5px; border-left: 4px solid var(--accent);">
-    <strong>Current Records:</strong> <span id="count" style="color:var(--accent); font-size:1.1rem;">0</span>
-  </div>
-
-  <div class="chart-box"><canvas id="yearChart"></canvas></div>
-  <div class="chart-box"><canvas id="pieChart"></canvas></div>
-  <div class="chart-box"><canvas id="compareChart"></canvas></div>
 </div>
 
 <div id="map"></div>
 
-<div class="slider-container">
-  <strong style="white-space:nowrap;">Timeline: <span id="yearValue">2025</span></strong>
-  <input type="range" id="yearRange" min="1700" max="2025" value="2025">
-  <button id="playBtn" onclick="toggleTimeline()" style="width: auto; padding: 8px 15px;">▶ Play</button>
+<div id="toast">
+  <div class="toast-title" id="toastTitle"></div>
+  <div id="toastMsg"></div>
+</div>
+
+<div class="timeline-bar">
+  <div class="timeline-year">⏱ <span id="yearValue">2025</span></div>
+  <input type="range" id="yearRange" min="1400" max="2025" value="2025">
+  <button class="play-btn" id="playBtn" onclick="toggleTimeline()">▶ Play</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
 <script>
-// --- GLOBALS ---
+// ═══════════════════════════════════════════════
+//  GLOBALS
+// ═══════════════════════════════════════════════
 let data = [], filteredData = [];
-let map, clusters, geoLayer, districtLayer, bufferCircle, networkLayer;
+let map, clusters, geoLayer, districtLayer, bufferCircle, networkLayer, heatLayer;
 let yearChart, pieChart, compareChart;
-let timer = null, compareMode = false, bufferMode = false, desertMode = false, networkOn = false;
+let timer = null;
+let compareMode = false, bufferMode = false, desertMode = false, networkOn = false, heatOn = false;
 let selectedStates = [];
+let toastTimer = null;
 
-// --- INITIALIZATION ---
+// ── CATEGORY COLOURS ──────────────────────────
+const CAT_COLOR = {
+  Public:     '#3498db',
+  University: '#9b59b6',
+  Private:    '#f1c40f',
+  Research:   '#1abc9c',
+  Museum:     '#e67e22',
+  Religious:  '#e74c3c',
+};
+
+const CAT_ICON = {
+  Public:     '🏛',
+  University: '🎓',
+  Private:    '📚',
+  Research:   '🔬',
+  Museum:     '🏺',
+  Religious:  '🕌',
+};
+
+// ── CUSTOM MARKER ─────────────────────────────
+function makeIcon(category) {
+  const color = CAT_COLOR[category] || '#c9a84c';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <path d="M14 0C6.27 0 0 6.27 0 14c0 9.6 14 22 14 22s14-12.4 14-22C28 6.27 21.73 0 14 0z" fill="${color}"/>
+    <circle cx="14" cy="14" r="6" fill="white" opacity="0.9"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: '',
+    iconSize: [28, 36],
+    iconAnchor: [14, 36],
+    popupAnchor: [0, -36]
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
 function initMap() {
-  map = L.map('map', { zoomControl: false }).setView([22.5, 80], 4.5);
+  map = L.map('map', { zoomControl: false }).setView([22.5, 80], 5);
   L.control.zoom({ position: 'topright' }).addTo(map);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-  
-  clusters = L.markerClusterGroup({ spiderfyOnMaxZoom: true, showCoverageOnHover: false });
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© CartoDB',
+    maxZoom: 19
+  }).addTo(map);
+
+  clusters = L.markerClusterGroup({
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    maxClusterRadius: 50,
+  });
   map.addLayer(clusters);
 
   networkLayer = L.layerGroup().addTo(map);
@@ -155,150 +733,307 @@ function initMap() {
   });
 }
 
-// --- DATA FETCH ---
+// ═══════════════════════════════════════════════
+//  DATA LOAD
+// ═══════════════════════════════════════════════
 fetch('libraries_full.json')
   .then(r => r.json())
   .then(d => {
     data = d;
+    populateStateFilter();
     initMap();
     initCharts();
     loadIndiaGeo();
     updateDisplay();
+    showToast('Atlas Loaded', `${d.length} libraries across India`);
   })
-  .catch(err => console.error("Could not load libraries_full.json", err));
-
-// --- CORE UPDATES ---
-function updateDisplay() {
-  const year = parseInt(document.getElementById('yearRange').value);
-  const search = document.getElementById('searchBox').value.toLowerCase();
-  const type = document.getElementById('typeFilter').value; 
-  
-  filteredData = data.filter(d => {
-    const matchesYear = d.year <= year;
-    const matchesSearch = d.name.toLowerCase().includes(search);
-    const matchesType = type === 'all' || d.category === type; 
-    return matchesYear && matchesSearch && matchesType;
+  .catch(err => {
+    console.error('Could not load libraries_full.json', err);
+    showToast('Error', 'Could not load libraries_full.json', true);
   });
-  
+
+function populateStateFilter() {
+  const states = [...new Set(data.map(d => d.state))].sort();
+  const sel = document.getElementById('stateFilter');
+  states.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    sel.appendChild(o);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  CORE UPDATE
+// ═══════════════════════════════════════════════
+function updateDisplay() {
+  const year   = parseInt(document.getElementById('yearRange').value);
+  const search = document.getElementById('searchBox').value.toLowerCase().trim();
+  const type   = document.getElementById('typeFilter').value;
+  const state  = document.getElementById('stateFilter').value;
+
+  filteredData = data.filter(d => {
+    if (d.year > year) return false;
+    if (search && !d.name.toLowerCase().includes(search)) return false;
+    if (type !== 'all' && d.category !== type) return false;
+    if (state !== 'all' && d.state !== state) return false;
+    return true;
+  });
+
   renderMarkers(filteredData);
-  document.getElementById('count').innerText = filteredData.length;
+  updateStats(filteredData);
   updateCharts(filteredData);
-  
+
   if (geoLayer) geoLayer.eachLayer(l => geoLayer.resetStyle(l));
   if (networkOn) drawNetwork(filteredData);
   else networkLayer.clearLayers();
+  if (heatOn) drawHeatmap(filteredData);
+  else if (heatLayer) map.removeLayer(heatLayer);
 }
 
+// ═══════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════
+function updateStats(arr) {
+  document.getElementById('count').textContent = arr.length;
+  const states = new Set(arr.map(d => d.state));
+  document.getElementById('stateCount').textContent = states.size;
+  const years = arr.map(d => d.year).filter(Boolean);
+  document.getElementById('oldestYear').textContent = years.length ? Math.min(...years) : '—';
+}
+
+// ═══════════════════════════════════════════════
+//  MARKERS
+// ═══════════════════════════════════════════════
 function renderMarkers(arr) {
   clusters.clearLayers();
   arr.forEach(lib => {
-    const imgHtml = lib.image ? `<img src="${lib.image}" class="popup-img">` : '';
-    const marker = L.marker([lib.lat, lib.lon])
-      .bindPopup(`<b>${lib.name}</b><br>Type: ${lib.category}<br>Built: ${lib.year}${imgHtml}`);
+    const color = CAT_COLOR[lib.category] || '#c9a84c';
+    const icon  = CAT_ICON[lib.category]  || '📖';
+    const imgHtml = lib.image
+      ? `<img src="${lib.image}" class="popup-img" onerror="this.style.display='none'">`
+      : '';
+    const connections = lib.connections?.length
+      ? `<br><span style="font-size:0.7rem;color:#a89f8c;">🔗 ${lib.connections.length} connection(s)</span>`
+      : '';
+
+    const marker = L.marker([lib.lat, lib.lon], { icon: makeIcon(lib.category) })
+      .bindPopup(`
+        <div class="popup-name">${icon} ${lib.name}</div>
+        <div class="popup-detail">
+          <b>State:</b> ${lib.state}<br>
+          <b>District:</b> ${lib.district || '—'}<br>
+          <b>Founded:</b> ${lib.year}<br>
+          ${connections}
+        </div>
+        <span class="popup-badge" style="background:${color}22;color:${color};border:1px solid ${color}44;">${lib.category}</span>
+        ${imgHtml}
+      `);
+
+    marker.on('click', () => showInfoPanel(lib));
     clusters.addLayer(marker);
   });
 }
 
-function getCount(name, level) {
-  const currentYear = parseInt(document.getElementById('yearRange').value);
-  return data.filter(d => d[level]?.toLowerCase().trim() === name.toLowerCase().trim() && d.year <= currentYear).length;
+// ═══════════════════════════════════════════════
+//  INFO PANEL
+// ═══════════════════════════════════════════════
+function showInfoPanel(lib) {
+  const color = CAT_COLOR[lib.category] || '#c9a84c';
+  const icon  = CAT_ICON[lib.category]  || '📖';
+  const imgHtml = lib.image
+    ? `<img src="${lib.image}" onerror="this.style.display='none'">`
+    : '';
+
+  document.getElementById('infoPanelContent').innerHTML = `
+    ${imgHtml}
+    <span class="badge" style="background:${color}22;color:${color};border:1px solid ${color}55;">${icon} ${lib.category}</span>
+    <h3>${lib.name}</h3>
+    <div class="meta">
+      📍 ${lib.district || ''}, ${lib.state}<br>
+      📅 Founded ${lib.year}<br>
+      ${lib.connections?.length ? `🔗 ${lib.connections.length} network connection(s)` : ''}
+    </div>
+  `;
+  document.getElementById('infoPanel').classList.add('show');
 }
 
-// --- NETWORK MAP ---
+function closeInfoPanel() {
+  document.getElementById('infoPanel').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════
+//  HEATMAP
+// ═══════════════════════════════════════════════
+function toggleHeatmap() {
+  heatOn = !heatOn;
+  document.getElementById('heatBtn').classList.toggle('active');
+  setPill('heat', heatOn);
+  if (!heatOn && heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+  else drawHeatmap(filteredData);
+}
+
+function drawHeatmap(arr) {
+  if (heatLayer) map.removeLayer(heatLayer);
+  if (typeof L.heatLayer === 'undefined') {
+    showToast('Heatmap', 'Leaflet.heat plugin not loaded, falling back.', true);
+    heatOn = false;
+    return;
+  }
+  const pts = arr.map(d => [d.lat, d.lon, 1]);
+  heatLayer = L.heatLayer(pts, { radius: 35, blur: 25, maxZoom: 10, gradient: { 0.2:'#2c3e50', 0.5:'#c9a84c', 1:'#e74c3c' } }).addTo(map);
+}
+
+// ═══════════════════════════════════════════════
+//  NETWORK MAP
+// ═══════════════════════════════════════════════
 function toggleNetworkMap() {
   networkOn = !networkOn;
   document.getElementById('netBtn').classList.toggle('active');
+  setPill('network', networkOn);
   updateDisplay();
 }
 
 function drawNetwork(arr) {
   networkLayer.clearLayers();
-  const currentYear = parseInt(document.getElementById('yearRange').value);
-  
+  const year = parseInt(document.getElementById('yearRange').value);
+  const drawn = new Set();
+
   arr.forEach(source => {
-    if (source.connections) {
-      source.connections.forEach(targetId => {
-        const target = data.find(d => String(d.id) === String(targetId));
-        if (target && target.year <= currentYear) {
-          L.polyline([[source.lat, source.lon], [target.lat, target.lon]], {
-            color: '#8e44ad', weight: 2, dashArray: '5, 10', opacity: 0.6
-          }).addTo(networkLayer);
-        }
-      });
-    }
+    if (!source.connections) return;
+    source.connections.forEach(tid => {
+      const key = [source.id, tid].sort().join('-');
+      if (drawn.has(key)) return;
+      drawn.add(key);
+      const target = data.find(d => String(d.id) === String(tid));
+      if (target && target.year <= year) {
+        L.polyline([[source.lat, source.lon], [target.lat, target.lon]], {
+          color: '#c9a84c',
+          weight: 1.5,
+          dashArray: '6,8',
+          opacity: 0.55
+        }).addTo(networkLayer);
+      }
+    });
   });
 }
 
-// --- GEO LOGIC ---
+// ═══════════════════════════════════════════════
+//  GEO / CHOROPLETH
+// ═══════════════════════════════════════════════
+function getCount(name, level) {
+  if (!name) return 0;
+  const year = parseInt(document.getElementById('yearRange').value);
+  const n = name.toLowerCase().trim();
+  return data.filter(d => d[level]?.toLowerCase().trim() === n && d.year <= year).length;
+}
+
 function getChoroColor(count) {
-  if (desertMode) return count === 0 ? '#e74c3c' : '#ecf0f1';
-  return count > 15 ? '#006d2c' : count > 8 ? '#31a354' : count > 3 ? '#74c476' : count > 0 ? '#bae4b3' : '#f7f7f7';
+  if (desertMode) return count === 0 ? '#c0392b' : '#1a6b3c';
+  if (count === 0) return '#1e2a3a';
+  if (count >= 10) return '#006d2c';
+  if (count >= 5)  return '#31a354';
+  if (count >= 2)  return '#74c476';
+  return '#bae4b3';
 }
 
 function styleFeature(feature) {
   const name = feature.properties.ST_NM || feature.properties.NAME_1 || feature.properties.name;
   const count = getCount(name, 'state');
-  const isSelected = selectedStates.includes(name);
-
-  return { 
-    fillColor: getChoroColor(count), 
-    weight: isSelected ? 4 : 1, 
-    opacity: 1, 
-    color: isSelected ? '#e67e22' : '#fff', 
-    fillOpacity: isSelected ? 0.9 : 0.7 
+  const sel   = selectedStates.includes(name);
+  return {
+    fillColor:   getChoroColor(count),
+    weight:      sel ? 3 : 0.8,
+    opacity:     1,
+    color:       sel ? '#c9a84c' : '#3d5a80',
+    fillOpacity: sel ? 0.85 : 0.65,
+    dashArray:   sel ? '' : '',
   };
 }
 
 function loadIndiaGeo() {
-  fetch('india_states.geojson').then(r => r.json()).then(json => {
-    geoLayer = L.geoJSON(json, {
-      style: styleFeature,
-      onEachFeature: function(f, l) {
-        const name = f.properties.ST_NM || f.properties.NAME_1 || f.properties.name;
-        l.bindTooltip(`${name}: ${getCount(name, 'state')}`, { sticky: true });
+  fetch('india_states.geojson')
+    .then(r => r.json())
+    .then(json => {
+      geoLayer = L.geoJSON(json, {
+        style: styleFeature,
+        onEachFeature: function(f, l) {
+          const name = f.properties.ST_NM || f.properties.NAME_1 || f.properties.name;
+          const cnt  = getCount(name, 'state');
+          l.bindTooltip(`<b>${name}</b><br>${cnt} librar${cnt !== 1 ? 'ies' : 'y'}`, { sticky: true, className: 'leaflet-dark-tooltip' });
 
-        l.on('mouseover', function() { this.setStyle({ fillOpacity: 0.4 }); });
-        l.on('mouseout', function() { geoLayer.resetStyle(this); });
-
-        l.on('click', function(e) {
-          if (compareMode) {
-            handleCompareSelection(name);
-          } else if (!bufferMode) {
-            map.fitBounds(this.getBounds());
-            document.getElementById('bc-state').innerText = ` > ${name}`;
-            loadDistricts(name);
-          }
-        });
-      }
-    }).addTo(map);
-  });
+          l.on('mouseover', function() { this.setStyle({ fillOpacity: 0.45, weight: 2 }); });
+          l.on('mouseout',  function() { geoLayer.resetStyle(this); });
+          l.on('click', function(e) {
+            if (compareMode) {
+              handleCompareSelection(name);
+            } else if (!bufferMode) {
+              map.fitBounds(this.getBounds(), { padding: [30, 30] });
+              document.getElementById('bc-state').innerHTML = ` › <span class="crumb" onclick="resetView()">${name}</span>`;
+              document.getElementById('bc-district').innerHTML = '';
+              loadDistricts(name);
+              // Filter to state
+              document.getElementById('stateFilter').value = name;
+              updateDisplay();
+            }
+          });
+        }
+      }).addTo(map);
+    })
+    .catch(() => console.warn('india_states.geojson not found'));
 }
 
 function loadDistricts(stateName) {
   if (districtLayer) map.removeLayer(districtLayer);
-  const fileName = stateName.replace(/\s/g, '') + ".geojson";
-  fetch(fileName).then(r => r.json()).then(json => {
-    districtLayer = L.geoJSON(json, {
-      style: (f) => {
-        const dName = f.properties.NAME_2 || f.properties.district || f.properties.name;
-        return { fillColor: getChoroColor(getCount(dName, 'district')), weight: 1, fillOpacity: 0.3, color: '#e67e22' };
-      },
-      onEachFeature: function(f, l) {
-        const dName = f.properties.NAME_2 || f.properties.district || f.properties.name;
-        l.bindTooltip(dName);
-        l.on('click', (e) => { L.DomEvent.stopPropagation(e); filterByLoc(dName, 'district'); });
-      }
-    }).addTo(map);
-  }).catch(() => console.warn("District GeoJSON missing"));
+  const fileName = stateName.replace(/\s+/g, '') + '.geojson';
+  fetch(fileName)
+    .then(r => r.json())
+    .then(json => {
+      districtLayer = L.geoJSON(json, {
+        style: f => {
+          const dName = f.properties.NAME_2 || f.properties.district || f.properties.name;
+          return { fillColor: getChoroColor(getCount(dName, 'district')), weight: 0.8, fillOpacity: 0.55, color: '#c9a84c' };
+        },
+        onEachFeature: function(f, l) {
+          const dName = f.properties.NAME_2 || f.properties.district || f.properties.name;
+          const cnt = getCount(dName, 'district');
+          l.bindTooltip(`<b>${dName}</b><br>${cnt} librar${cnt !== 1 ? 'ies' : 'y'}`, { sticky: true });
+          l.on('click', e => {
+            L.DomEvent.stopPropagation(e);
+            document.getElementById('bc-district').textContent = ` › ${dName}`;
+            filterByDistrict(dName);
+          });
+        }
+      }).addTo(map);
+    })
+    .catch(() => {});
 }
 
-// --- MODES ---
+function filterByDistrict(name) {
+  const year = parseInt(document.getElementById('yearRange').value);
+  const arr = data.filter(d => d.district?.toLowerCase().trim() === name.toLowerCase().trim() && d.year <= year);
+  clusters.clearLayers();
+  arr.forEach(lib => {
+    const marker = L.marker([lib.lat, lib.lon], { icon: makeIcon(lib.category) })
+      .bindPopup(`<div class="popup-name">${lib.name}</div>`);
+    marker.on('click', () => showInfoPanel(lib));
+    clusters.addLayer(marker);
+  });
+  updateStats(arr);
+  showToast(name, `${arr.length} libraries`);
+}
+
+// ═══════════════════════════════════════════════
+//  MODES
+// ═══════════════════════════════════════════════
 function toggleCompareMode() {
   compareMode = !compareMode;
   selectedStates = [];
   document.getElementById('compareBtn').classList.toggle('active');
-  geoLayer.eachLayer(l => geoLayer.resetStyle(l));
+  document.getElementById('compareChartWrap').style.display = compareMode ? 'block' : 'none';
+  setPill('compare', compareMode);
+  if (geoLayer) geoLayer.eachLayer(l => geoLayer.resetStyle(l));
   updateCompareChart();
+  if (compareMode) showToast('Compare Mode', 'Click two states on the map');
 }
 
 function handleCompareSelection(name) {
@@ -308,106 +1043,251 @@ function handleCompareSelection(name) {
     selectedStates.push(name);
     if (selectedStates.length > 2) selectedStates.shift();
   }
-  geoLayer.eachLayer(l => geoLayer.resetStyle(l));
+  if (geoLayer) geoLayer.eachLayer(l => geoLayer.resetStyle(l));
   updateCompareChart();
+  if (selectedStates.length === 2) {
+    const [a, b] = selectedStates.map(s => getCount(s, 'state'));
+    showToast(`${selectedStates[0]} vs ${selectedStates[1]}`, `${a} vs ${b} libraries`);
+  }
 }
 
 function toggleBufferMode() {
   bufferMode = !bufferMode;
   document.getElementById('bufferBtn').classList.toggle('active');
-  if (!bufferMode && bufferCircle) map.removeLayer(bufferCircle);
+  setPill('buffer', bufferMode);
+  if (!bufferMode && bufferCircle) { map.removeLayer(bufferCircle); bufferCircle = null; }
+  if (bufferMode) showToast('Buffer Analysis', 'Click any point on the map');
 }
 
 function runBufferAnalysis(latlng) {
-  const radiusKm = document.getElementById('bufferRadius').value;
+  const r = parseFloat(document.getElementById('bufferRadius').value) || 50;
   if (bufferCircle) map.removeLayer(bufferCircle);
-  bufferCircle = L.circle(latlng, { radius: radiusKm * 1000, color: '#e67e22' }).addTo(map);
-  const count = filteredData.filter(lib => map.distance(latlng, [lib.lat, lib.lon]) <= radiusKm * 1000).length;
-  alert(`${count} libraries within ${radiusKm}km radius.`);
+  bufferCircle = L.circle(latlng, {
+    radius: r * 1000,
+    color: '#c9a84c',
+    fillColor: '#c9a84c22',
+    weight: 2,
+  }).addTo(map);
+
+  const libs = filteredData.filter(lib => map.distance(latlng, [lib.lat, lib.lon]) <= r * 1000);
+  const cats = {};
+  libs.forEach(l => cats[l.category] = (cats[l.category] || 0) + 1);
+  const breakdown = Object.entries(cats).map(([k,v]) => `${k}: ${v}`).join(', ');
+  showToast(`Within ${r}km`, `${libs.length} libraries found${breakdown ? ` — ${breakdown}` : ''}`);
 }
 
 function toggleDesertMode() {
   desertMode = !desertMode;
   document.getElementById('desertBtn').classList.toggle('active');
+  setPill('desert', desertMode);
   updateDisplay();
+  if (desertMode) showToast('Library Deserts', 'Red regions have no libraries');
 }
 
-// --- CHARTS ---
+// ═══════════════════════════════════════════════
+//  CHARTS
+// ═══════════════════════════════════════════════
+const CHART_DEFAULTS = {
+  color: '#f0ece2',
+  borderColor: 'rgba(201,168,76,0.2)',
+  font: { family: "'DM Sans', sans-serif" },
+  plugins: {
+    legend: { labels: { color: '#a89f8c', font: { family: "'DM Sans', sans-serif", size: 11 } } },
+    tooltip: { titleColor: '#c9a84c', bodyColor: '#f0ece2' }
+  }
+};
+
 function initCharts() {
   yearChart = new Chart(document.getElementById('yearChart'), {
     type: 'line',
-    data: { labels: [], datasets: [{ label: 'Growth', data: [], borderColor: '#e67e22', fill: true }] },
-    options: { maintainAspectRatio: false }
+    data: { labels: [], datasets: [{
+      label: 'Libraries Founded',
+      data: [],
+      borderColor: '#c9a84c',
+      backgroundColor: 'rgba(201,168,76,0.1)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 2,
+    }]},
+    options: {
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color:'#a89f8c', maxTicksLimit:6 }, grid: { color:'rgba(201,168,76,0.08)' } },
+        y: { ticks: { color:'#a89f8c' }, grid: { color:'rgba(201,168,76,0.08)' } }
+      },
+      ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } }
+    }
   });
+
   pieChart = new Chart(document.getElementById('pieChart'), {
-    type: 'pie',
-    data: { labels: ['Public', 'University', 'Private'], datasets: [{ data: [0,0,0], backgroundColor: ['#3498db', '#9b59b6', '#f1c40f'] }] },
-    options: { maintainAspectRatio: false }
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(CAT_COLOR),
+      datasets: [{ data: new Array(Object.keys(CAT_COLOR).length).fill(0), backgroundColor: Object.values(CAT_COLOR), borderWidth: 0 }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      ...CHART_DEFAULTS,
+    }
   });
+
   compareChart = new Chart(document.getElementById('compareChart'), {
     type: 'bar',
     data: { labels: ['Libraries'], datasets: [] },
-    options: { maintainAspectRatio: false }
+    options: {
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color:'#a89f8c' }, grid: { color:'rgba(201,168,76,0.08)' } },
+        y: { ticks: { color:'#a89f8c' }, grid: { color:'rgba(201,168,76,0.08)' } }
+      },
+      ...CHART_DEFAULTS,
+    }
   });
 }
 
 function updateCharts(arr) {
-  const cats = { Public: 0, University: 0, Private: 0 };
-  const years = {};
-  arr.forEach(d => {
-    cats[d.category]++;
-    years[d.year] = (years[d.year] || 0) + 1;
-  });
-  pieChart.data.datasets[0].data = [cats.Public, cats.University, cats.Private];
-  pieChart.update();
+  // Pie
+  const cats = {};
+  Object.keys(CAT_COLOR).forEach(k => cats[k] = 0);
+  arr.forEach(d => { if (cats[d.category] !== undefined) cats[d.category]++; else cats['Private'] = (cats['Private']||0)+1; });
+  pieChart.data.datasets[0].data = Object.values(cats);
+  pieChart.update('none');
 
-  const sortedYears = Object.keys(years).sort((a,b) => a-b);
-  yearChart.data.labels = sortedYears;
-  yearChart.data.datasets[0].data = sortedYears.map(y => years[y]);
-  yearChart.update();
+  // Line — cumulative growth
+  const yearCounts = {};
+  arr.forEach(d => { yearCounts[d.year] = (yearCounts[d.year]||0)+1; });
+  const sortedYrs = Object.keys(yearCounts).sort((a,b)=>a-b);
+  let cum = 0;
+  const cumData = sortedYrs.map(y => { cum += yearCounts[y]; return cum; });
+  yearChart.data.labels = sortedYrs;
+  yearChart.data.datasets[0].data = cumData;
+  yearChart.update('none');
 }
 
 function updateCompareChart() {
-  compareChart.data.datasets = selectedStates.map((state, i) => ({
-    label: state,
-    backgroundColor: i === 0 ? '#3498db' : '#e74c3c',
-    data: [data.filter(d => d.state === state).length]
-  }));
+  compareChart.data.datasets = selectedStates.map((state, i) => {
+    const total = data.filter(d => d.state === state).length;
+    return {
+      label: state,
+      backgroundColor: i === 0 ? '#3498db' : '#e74c3c',
+      data: [total],
+      borderRadius: 5,
+    };
+  });
   compareChart.update();
 }
 
-// --- TIMELINE ---
+// ═══════════════════════════════════════════════
+//  TIMELINE
+// ═══════════════════════════════════════════════
 function toggleTimeline() {
   const btn = document.getElementById('playBtn');
   if (timer) {
-    clearInterval(timer); timer = null; btn.innerText = "▶ Play";
+    clearInterval(timer); timer = null;
+    btn.textContent = '▶ Play';
   } else {
-    btn.innerText = "⏸ Pause";
+    btn.textContent = '⏸ Pause';
     timer = setInterval(() => {
       const yr = document.getElementById('yearRange');
       if (parseInt(yr.value) >= 2025) { toggleTimeline(); return; }
       yr.value = parseInt(yr.value) + 1;
-      document.getElementById('yearValue').innerText = yr.value;
+      document.getElementById('yearValue').textContent = yr.value;
       updateDisplay();
-    }, 150);
+    }, 120);
   }
 }
 
-function filterByLoc(name, level) {
-  const locData = data.filter(d => d[level]?.toLowerCase().trim() === name.toLowerCase().trim());
-  renderMarkers(locData);
-  document.getElementById('count').innerText = locData.length;
+function jumpYear(y) {
+  document.getElementById('yearRange').value = y;
+  document.getElementById('yearValue').textContent = y;
+  updateDisplay();
 }
 
-function resetView() { location.reload(); }
+// ═══════════════════════════════════════════════
+//  EXPORT CSV
+// ═══════════════════════════════════════════════
+function exportCSV() {
+  if (!filteredData.length) { showToast('Export', 'No data to export', true); return; }
+  const header = ['id','name','state','district','year','category','lat','lon'];
+  const rows = filteredData.map(d => header.map(h => `"${d[h] ?? ''}"`).join(','));
+  const csv = [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `indian_libraries_${document.getElementById('yearRange').value}.csv`;
+  a.click();
+  showToast('Exported!', `${filteredData.length} records saved as CSV`);
+}
 
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+function showToast(title, msg, isErr) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastMsg').textContent = msg;
+  t.style.borderColor = isErr ? '#e74c3c' : 'var(--border)';
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ═══════════════════════════════════════════════
+//  PILLS
+// ═══════════════════════════════════════════════
+function setPill(id, visible) {
+  const el = document.getElementById('pill-' + id);
+  if (el) el.classList.toggle('visible', visible);
+}
+
+// ═══════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════
+function resetView() {
+  document.getElementById('searchBox').value = '';
+  document.getElementById('typeFilter').value = 'all';
+  document.getElementById('stateFilter').value = 'all';
+  document.getElementById('yearRange').value = 2025;
+  document.getElementById('yearValue').textContent = '2025';
+  document.getElementById('bc-state').innerHTML = '';
+  document.getElementById('bc-district').innerHTML = '';
+  if (districtLayer) { map.removeLayer(districtLayer); districtLayer = null; }
+  if (bufferCircle)  { map.removeLayer(bufferCircle);  bufferCircle  = null; }
+  if (heatLayer)     { map.removeLayer(heatLayer);     heatLayer     = null; }
+  networkLayer.clearLayers();
+
+  compareMode = bufferMode = desertMode = networkOn = heatOn = false;
+  selectedStates = [];
+  ['compareBtn','bufferBtn','desertBtn','netBtn','heatBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  ['buffer','compare','network','desert','heat'].forEach(k => setPill(k, false));
+  document.getElementById('compareChartWrap').style.display = 'none';
+  closeInfoPanel();
+
+  map.setView([22.5, 80], 5);
+  if (geoLayer) geoLayer.eachLayer(l => geoLayer.resetStyle(l));
+  updateDisplay();
+}
+
+// ═══════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═══════════════════════════════════════════════
 document.getElementById('yearRange').oninput = function() {
-  document.getElementById('yearValue').innerText = this.value;
+  document.getElementById('yearValue').textContent = this.value;
   updateDisplay();
 };
 document.getElementById('searchBox').oninput = updateDisplay;
 document.getElementById('typeFilter').onchange = updateDisplay;
+document.getElementById('stateFilter').onchange = updateDisplay;
 
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { resetView(); closeInfoPanel(); }
+  if (e.key === ' ' && e.target.tagName !== 'INPUT') { e.preventDefault(); toggleTimeline(); }
+});
 </script>
 </body>
 </html>
