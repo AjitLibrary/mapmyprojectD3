@@ -523,7 +523,7 @@
 </head>
 <body>
 
-<button id="menuToggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+<button id="menuToggle" type="button" aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false" onclick="toggleSidebar()">☰</button>
 
 <div id="breadcrumbs">
   <span class="crumb" onclick="resetView()">🇮🇳 India</span>
@@ -571,10 +571,10 @@
     <!-- Search -->
     <div class="section-label">Search & Filter</div>
     <div class="search-wrap">
-      <input type="text" id="searchBox" placeholder="Search library name...">
+      <input type="text" id="searchBox" placeholder="Search library name..." aria-label="Search library name">
     </div>
 
-    <select id="typeFilter">
+    <select id="typeFilter" aria-label="Filter by library category">
       <option value="all">All Categories</option>
       <option value="Public">Public</option>
       <option value="University">University</option>
@@ -584,7 +584,7 @@
       <option value="Religious">Religious</option>
     </select>
 
-    <select id="stateFilter">
+    <select id="stateFilter" aria-label="Filter by state or union territory">
       <option value="all">All States</option>
     </select>
 
@@ -1307,6 +1307,14 @@ function showToast(title, msg, isErr) {
 function setPill(id, visible) {
   const el = document.getElementById('pill-' + id);
   if (el) el.classList.toggle('visible', visible);
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const menuButton = document.getElementById('menuToggle');
+  const isOpen = sidebar.classList.toggle('open');
+  menuButton.setAttribute('aria-expanded', String(isOpen));
+  menuButton.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
 }
 
 // ═══════════════════════════════════════════════
