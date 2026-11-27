@@ -736,20 +736,65 @@ function initMap() {
 // ═══════════════════════════════════════════════
 //  DATA LOAD
 // ═══════════════════════════════════════════════
+function validateLibraryData(records) {
+  if (!Array.isArray(records)) {
+    throw new Error('The library data must be a JSON array.');
+  }
+
+  let invalidCount = 0;
+  const validRecords = records.filter((record, index) => {
+    const year = Number(record?.year);
+    const lat = Number(record?.lat);
+    const lon = Number(record?.lon);
+    const isValid = Boolean(
+      record &&
+      typeof record.name === 'string' && record.name.trim() &&
+      typeof record.state === 'string' && record.state.trim() &&
+      typeof record.category === 'string' && record.category.trim() &&
+      Number.isFinite(year) && year > 0 &&
+      Number.isFinite(lat) && lat >= -90 && lat <= 90 &&
+      Number.isFinite(lon) && lon >= -180 && lon <= 180
+    );
+
+    if (!isValid) {
+      invalidCount++;
+      console.warn(`Skipping invalid library record at index ${index}.`, record);
+    }
+    return isValid;
+  }).map(record => ({
+    ...record,
+    year: Number(record.year),
+    lat: Number(record.lat),
+    lon: Number(record.lon),
+  }));
+
+  return { validRecords, invalidCount };
+}
+
 fetch('libraries_full.json')
-  .then(r => r.json())
-  .then(d => {
-    data = d;
+  .then(response => {
+    if (!response.ok) throw new Error(`Request failed (${response.status}).`);
+    return response.json();
+  })
+  .then(records => {
+    const { validRecords, invalidCount } = validateLibraryData(records);
+    if (!validRecords.length) throw new Error('No valid library records were found.');
+
+    data = validRecords;
     populateStateFilter();
     initMap();
     initCharts();
     loadIndiaGeo();
     updateDisplay();
-    showToast('Atlas Loaded', `${d.length} libraries across India`);
+    showToast(
+      invalidCount ? 'Atlas Loaded with Warnings' : 'Atlas Loaded',
+      `${data.length} libraries loaded${invalidCount ? `; skipped ${invalidCount} invalid record(s)` : ''}`,
+      invalidCount > 0
+    );
   })
   .catch(err => {
     console.error('Could not load libraries_full.json', err);
-    showToast('Error', 'Could not load libraries_full.json', true);
+    showToast('Error', `Could not load library data: ${err.message}`, true);
   });
 
 function populateStateFilter() {
@@ -782,8 +827,9 @@ function updateDisplay() {
   renderMarkers(filteredData);
   updateStats(filteredData);
   updateCharts(filteredData);
+  updateCompareChart();
 
-  if (geoLayer) geoLayer.eachLayer(l => geoLayer.resetStyle(l));
+  updateChoroplethLayers();
   if (networkOn) drawNetwork(filteredData);
   else networkLayer.clearLayers();
   if (heatOn) drawHeatmap(filteredData);
@@ -948,6 +994,27 @@ function styleFeature(feature) {
     fillOpacity: sel ? 0.85 : 0.65,
     dashArray:   sel ? '' : '',
   };
+}
+
+function updateChoroplethLayers() {
+  if (geoLayer) {
+    geoLayer.eachLayer(layer => {
+      geoLayer.resetStyle(layer);
+      const name = layer.feature.properties.ST_NM || layer.feature.properties.NAME_1 || layer.feature.properties.name;
+      const count = getCount(name, 'state');
+      layer.setTooltipContent(`<b>${name}</b><br>${count} librar${count !== 1 ? 'ies' : 'y'}`);
+    });
+  }
+
+  if (districtLayer) {
+    districtLayer.eachLayer(layer => {
+      const feature = layer.feature;
+      const name = feature.properties.NAME_2 || feature.properties.district || feature.properties.name;
+      const count = getCount(name, 'district');
+      layer.setStyle({ fillColor: getChoroColor(count), weight: 0.8, fillOpacity: 0.55, color: '#c9a84c' });
+      layer.setTooltipContent(`<b>${name}</b><br>${count} librar${count !== 1 ? 'ies' : 'y'}`);
+    });
+  }
 }
 
 function loadIndiaGeo() {
@@ -1166,8 +1233,9 @@ function updateCharts(arr) {
 }
 
 function updateCompareChart() {
+  const year = parseInt(document.getElementById('yearRange').value, 10);
   compareChart.data.datasets = selectedStates.map((state, i) => {
-    const total = data.filter(d => d.state === state).length;
+    const total = data.filter(d => d.state === state && d.year <= year).length;
     return {
       label: state,
       backgroundColor: i === 0 ? '#3498db' : '#e74c3c',
